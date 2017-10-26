@@ -124,25 +124,25 @@ public class IcoSphere extends TriangleMesh {
             points[i * 9 + 0] = positions.get(vertex.v1).x;
             points[i * 9 + 1] = positions.get(vertex.v1).y;
             points[i * 9 + 2] = positions.get(vertex.v1).z;
-            normals[i * 9 + 0] = 1.0f;
-            normals[i * 9 + 1] = 1.0f;
-            normals[i * 9 + 2] = 1.0f;
+            normals[i * 9 + 0] = positions.get(vertex.v1).x;
+            normals[i * 9 + 1] = positions.get(vertex.v1).y;
+            normals[i * 9 + 2] = positions.get(vertex.v1).z;;
             elements[i * 3 + 0] = i * 3 + 0;
 
             points[i * 9 + 3] = positions.get(vertex.v2).x;
             points[i * 9 + 4] = positions.get(vertex.v2).y;
             points[i * 9 + 5] = positions.get(vertex.v2).z;
-            normals[i * 9 + 3] = 1.0f;
-            normals[i * 9 + 4] = 1.0f;
-            normals[i * 9 + 5] = 1.0f;
+            normals[i * 9 + 3] = positions.get(vertex.v2).x;
+            normals[i * 9 + 4] = positions.get(vertex.v2).y;
+            normals[i * 9 + 5] = positions.get(vertex.v2).z;
             elements[i * 3 + 1] = i * 3 + 1;
 
             points[i * 9 + 6] = positions.get(vertex.v3).x;
             points[i * 9 + 7] = positions.get(vertex.v3).y;
             points[i * 9 + 8] = positions.get(vertex.v3).z;
-            normals[i * 9 + 6] = 1.0f;
-            normals[i * 9 + 7] = 1.0f;
-            normals[i * 9 + 8] = 1.0f;
+            normals[i * 9 + 6] = positions.get(vertex.v3).x;
+            normals[i * 9 + 7] = positions.get(vertex.v3).y;
+            normals[i * 9 + 8] = positions.get(vertex.v3).z;
             elements[i * 3 + 2] = i * 3 + 2;
         }
 

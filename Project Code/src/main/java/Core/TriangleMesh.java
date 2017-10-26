@@ -2,6 +2,7 @@ package Core;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.util.GLBuffers;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -33,6 +34,11 @@ public abstract class TriangleMesh {
             System.exit(-1);
         }
     }
+
+    public void render(Shader shader, Matrix4f m){
+        System.out.println("This is an error. Why have you come here?");
+    }
+
     public void renderWithLines(Shader shader, Vector4f color, Vector4f lineColor){
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL);
         shader.setUniform("color", color);

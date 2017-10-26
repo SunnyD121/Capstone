@@ -35,7 +35,7 @@ public class StepPyramid extends TriangleMesh {
 
     @Override
     public void render(){
-        throw new IllegalArgumentException("Don't call StepPyramid.render(GL4). Call StepPyramid.render(GL4, Shader, Matrix4f)");
+        throw new IllegalArgumentException("Don't call StepPyramid.render(). Call StepPyramid.render(Shader, Matrix4f)");
     }
 
     public void render(Shader shader, Matrix4f ObjectToWorld){

@@ -10,26 +10,19 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.util.GLBuffers;
 import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
-import com.sun.prism.impl.BufferUtil;
-import jogamp.opengl.glu.mipmap.Image;
-import jogamp.opengl.glu.mipmap.PixelStorageModes;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-
 import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
-import java.awt.image.WritableRaster;
 import java.io.*;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 
 import static Core.GLListener.gl;
+import static World.Emitter.ParticleType.SNOWFLAKE;
 import static com.jogamp.opengl.GL.*;
 
 /**
@@ -37,7 +30,8 @@ import static com.jogamp.opengl.GL.*;
  */
 public class World {
 
-    private Vector3f playerPos;
+    private Vector3f initialPlayerPosition;
+    private Player player;
     private Vector3f sunlightDirection;
     private ArrayList<Vector3f> treeLocation;
     private ArrayList<Building> city;
@@ -53,6 +47,8 @@ public class World {
     private ArrayList<StepPyramid> stepPyramids;
     private Texture theTexture;
     private int textureID; //TODO: remove this?
+    private Emitter emitter;
+    private BillBoardTriangle bill;
 
     private Cube c;
 
@@ -138,7 +134,7 @@ public class World {
 
         //Player
         JsonArray startPosition = jsonObject.get("startPosition").getAsJsonArray();
-        playerPos = new Vector3f(startPosition.get(0).getAsFloat(), startPosition.get(1).getAsFloat(), startPosition.get(2).getAsFloat());
+        initialPlayerPosition = new Vector3f(startPosition.get(0).getAsFloat(), startPosition.get(1).getAsFloat(), startPosition.get(2).getAsFloat());
 
         //Lamps
         JsonArray lights = jsonObject.get("lamps").getAsJsonArray();
@@ -178,7 +174,7 @@ public class World {
         //Textures
         //initTextures(shader);
         //loadTextures(shader, new int[1]);
-        //initializeTexture();
+        initializeTexture();
 
         //init calls
         for (Building b : city) b.init();
@@ -190,10 +186,13 @@ public class World {
         ground.init();
 
         c.init();
-
+        emitter = new Emitter(SNOWFLAKE, new Vector3f(0,10,0));
+        bill = new BillBoardTriangle(3.0f);
+        bill.init();
     } //end init()
 
-    public void render(Shader shader){
+    public void render(Shader shader, Player player){
+        this.player = player;
         shader.setUniform("ObjectToWorld", new Matrix4f());
 
         //draw the objects in the World:
@@ -203,23 +202,28 @@ public class World {
         drawLamps(shader);
         drawStepPyramids(shader);
 
-        /*
+
         Material m = new Material();
         m.Kd = new Vector3f(0); //Textures need black.
         m.setUniforms(shader);
         gl.glActiveTexture(GL_TEXTURE0);
         gl.glBindTexture(GL_TEXTURE_2D, textureID);
-        theTexture.enable(gl);
-        theTexture.bind(gl);
+        //theTexture.enable(gl);
+        //theTexture.bind(gl);
+        shader.setUniform("tex", 0);
 
         Matrix4f move = new Matrix4f().translate(0,5,20);
         shader.setUniform("ObjectToWorld",move);
         c.render();
 
-        theTexture.disable(gl);
+        //theTexture.disable(gl);
         gl.glBindTexture(GL_TEXTURE_2D, 0); //unbind
-        */
 
+
+        //TODO: change emitter Material. (maybe in the Emitter or particle class themself?
+        emitter.update(shader, new Matrix4f());
+        //Matrix4f location = new Matrix4f().translate(20,10,0);
+        //bill.render(shader, location, player.getDirection());
     }
 
     private void drawTrees(Shader shader){
@@ -435,18 +439,20 @@ public class World {
     }
     private void initializeTexture(){
         String filepath = "Project Code/src/main/resources/textures/facade1.jpg";
-        gl.glEnable(GL_TEXTURE_2D);
+        //gl.glEnable(GL_TEXTURE_2D); //commented because use of shaders.
+        gl.glActiveTexture(GL.GL_TEXTURE0);
         try{
-            File im = new File(filepath);
+            File im = new File(filepath);       //possible conversion causing white box?
             Texture t = TextureIO.newTexture(im, false);
             textureID = t.getTextureObject(gl);
             System.out.println(textureID);
-            //gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            //gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         }
         catch (Throwable trap){
             trap.printStackTrace();
         }
+        
     }
 
     private byte[] getPixels(BufferedImage image, int width, int height) {
@@ -463,7 +469,7 @@ public class World {
         return result;
     }
 
-    public Vector3f getPlayerPosition(){ return new Vector3f(playerPos); }
+    public Vector3f getInitialPlayerPosition(){ return new Vector3f(initialPlayerPosition); }
 
     public Vector3f getFlyingPosition(){ return new Vector3f(observerPos); }
 

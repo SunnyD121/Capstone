@@ -9,7 +9,7 @@ import org.joml.Vector3f;
  */
 public abstract class Character {
 
-    TriangleMesh geometry;
+    TriangleMesh model;
     Vector3f position;
     Vector3f direction;
 

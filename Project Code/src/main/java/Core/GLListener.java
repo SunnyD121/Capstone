@@ -41,6 +41,7 @@ import java.awt.MouseInfo;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by (User name) on 7/25/2017.
@@ -56,7 +57,7 @@ public class GLListener implements GLEventListener, KeyListener, MouseListener{
     private float zoom_factor = 1;
     private Point premouse, postmouse;
     private boolean mouse3down = false;
-    private ArrayList<Integer> keysDown;
+    private ConcurrentLinkedQueue<Integer> keysDown;
     public static GL4 gl;
 
     protected enum CameraMode{
@@ -68,7 +69,7 @@ public class GLListener implements GLEventListener, KeyListener, MouseListener{
     public GLListener(){
         world = new World("Project Code/src/main/resources/race.json");
         player = new Player();
-        keysDown = new ArrayList<>();
+        keysDown = new ConcurrentLinkedQueue<>();
     }
     @Override
     public void init(GLAutoDrawable drawable) {
@@ -77,8 +78,7 @@ public class GLListener implements GLEventListener, KeyListener, MouseListener{
         printVersionInfo(drawable);
 
         //paints background.
-        //gl.glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-        gl.glClearColor(0,0,0, 1.0f);
+        gl.glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
         // Load and compile the shaders
         try {
@@ -103,7 +103,7 @@ public class GLListener implements GLEventListener, KeyListener, MouseListener{
 
         world.init(shader);
         player.init();
-        player.setPosition(world.getPlayerPosition());
+        player.setPosition(world.getInitialPlayerPosition());
         Vector3f dir = new Vector3f(player.getDirection());
         dir.rotateAxis((float)Math.toRadians(70.0f), 0 , 1 , 0);
         player.setDirection(dir.normalize(dir));
@@ -114,6 +114,7 @@ public class GLListener implements GLEventListener, KeyListener, MouseListener{
         cam3.orient(world.getFlyingPosition(), new Vector3f(0,0,0), new Vector3f(0,1,0));
     }
 
+    float test = 1.0f; boolean sunbool = false;
     @Override
     public void display(GLAutoDrawable drawable) {
 
@@ -162,7 +163,7 @@ public class GLListener implements GLEventListener, KeyListener, MouseListener{
 
         //draw the lamp's light
         shader.setUniform("lampIntensity", new Vector3f(18.0f));
-        shader.setUniform("ambientIntensity", new Vector3f(0.0f));
+        shader.setUniform("ambientIntensity", new Vector3f(1.0f));  //formerly 0.0f
 
         ArrayList<Vector4f> t = world.getLampData();
         for (int i = 0; i < t.size(); i++) {
@@ -176,10 +177,16 @@ public class GLListener implements GLEventListener, KeyListener, MouseListener{
         Vector4f sunlightDir = new Vector4f(world.getSunlightDirection(), 0.0f);    //0.0f, otherwise no sunlight.
         sunlightDir.mul(worldToEye);
         shader.setUniform("sunDirection", new Vector3f(sunlightDir.x, sunlightDir.y, sunlightDir.z));
-        shader.setUniform("sunIntensity", new Vector3f(1.0f));
+        shader.setUniform("sunIntensity", new Vector3f(test));  //1.0f
+        /////
+        if (sunbool) test += 0.01f;
+        else test -= 0.01f;
+        if (test >= 1.0f){ sunbool = !sunbool; test = 0.99f;}
+        else if (test <= 0.0f) { sunbool = !sunbool; test = 0.01f; }
+        /////
 
         //render calls
-        world.render(shader);
+        world.render(shader, player);
         player.render(shader);
 
         //check for input
@@ -298,8 +305,8 @@ public class GLListener implements GLEventListener, KeyListener, MouseListener{
                 } //end switch
             }   //end else
             else if (mode == CHASE){
-                final float MOVE_SPEED = 0.5f;
-                final float TURN_SPEED = 3.0f;
+                final float MOVE_SPEED = 1.0f;
+                final float TURN_SPEED = 5.0f;
                 switch(key){
                     case KeyEvent.VK_W:
                         player.move(MOVE_SPEED);
