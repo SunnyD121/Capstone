@@ -148,7 +148,6 @@ public class Shader {
         gl.glUniform1f(getUniformLocation(name), val);
     }
 
-
     private String getFileContents(final String fileName) throws ShaderException{
         BufferedReader reader = null;
         try{

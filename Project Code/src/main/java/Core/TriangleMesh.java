@@ -152,7 +152,7 @@ public abstract class TriangleMesh {
         gl.glBindVertexArray(0);
     }
 
-    final private void createBuffers(int num){
+    private void createBuffers(int num){
         ArrayList<Integer> buffersTemp = new ArrayList<>();
         for(int i=0; i < num; i++) {
             buffersTemp.add(buffersTemp.size(), 0);

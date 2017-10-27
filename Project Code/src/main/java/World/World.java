@@ -7,8 +7,10 @@ import Shapes.Rectangle;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.util.GLBuffers;
 import com.jogamp.opengl.util.texture.Texture;
+import com.jogamp.opengl.util.texture.TextureData;
 import com.jogamp.opengl.util.texture.TextureIO;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -174,7 +176,8 @@ public class World {
         //Textures
         //initTextures(shader);
         //loadTextures(shader, new int[1]);
-        initializeTexture();
+        //initializeTexture();
+        initTex();
 
         //init calls
         for (Building b : city) b.init();
@@ -211,6 +214,7 @@ public class World {
         //theTexture.enable(gl);
         //theTexture.bind(gl);
         shader.setUniform("tex", 0);
+
 
         Matrix4f move = new Matrix4f().translate(0,5,20);
         shader.setUniform("ObjectToWorld",move);
@@ -453,6 +457,30 @@ public class World {
             trap.printStackTrace();
         }
         
+    }
+
+    private void initTex(){
+        try {
+            //read texture picture file
+            InputStream texStream = getClass().getResourceAsStream("/textures/facade2.jpg");
+            TextureData textureData = TextureIO.newTextureData(gl.getGLProfile(), texStream, false, TextureIO.JPG);
+            //create and load buffers
+            int[] texNames = new int[1];
+            gl.glGenTextures(1, texNames, 0);
+            textureID = texNames[0];
+            gl.glActiveTexture(GL_TEXTURE0);
+            gl.glBindTexture(GL_TEXTURE_2D, textureID);
+            //texturing options
+            gl.glTexParameteri(GL_TEXTURE_2D, GL4.GL_TEXTURE_BASE_LEVEL, 0);
+            gl.glTexParameteri(GL_TEXTURE_2D, GL4.GL_TEXTURE_MAX_LEVEL, 0);
+            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+            gl.glTexStorage2D(GL_TEXTURE_2D, 1, textureData.getInternalFormat(), textureData.getWidth(), textureData.getHeight());
+            gl.glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,textureData.getWidth(), textureData.getHeight(), textureData.getPixelFormat(), textureData.getPixelType(), textureData.getBuffer());
+
+        }
+        catch (IOException e){System.err.println("Failed to load texture."); e.printStackTrace();}
     }
 
     private byte[] getPixels(BufferedImage image, int width, int height) {
