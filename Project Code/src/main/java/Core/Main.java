@@ -66,12 +66,13 @@ public class Main {
 
         //add Listeners
         GLListener gl = new GLListener();
+        KeyBinder keyListener = KeyBinder.getInstance();
         // Connect to main listener
         glWindow.addGLEventListener(gl);
         // add keyListener
-        glWindow.addKeyListener(gl);
+        glWindow.addKeyListener(keyListener);
         //add mouseListener
-        glWindow.addMouseListener(gl);
+        glWindow.addMouseListener(keyListener);
 
 
         // Handle window closing

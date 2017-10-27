@@ -1,7 +1,6 @@
 package World;
 
-import Core.Shader;
-import Core.Utilities;
+import Core.*;
 import Shapes.*;
 import Shapes.Rectangle;
 import com.google.gson.*;
@@ -25,15 +24,21 @@ import java.util.ArrayList;
 
 import static Core.GLListener.gl;
 import static World.Emitter.ParticleType.SNOWFLAKE;
+import static World.World.CameraMode.CHASE;
+import static World.World.CameraMode.OBSERVER;
+import static World.World.CameraMode.PHOTO;
 import static com.jogamp.opengl.GL.*;
 
 /**
  * Created by (User name) on 8/14/2017.
  */
-public class World {
+public class World implements KeyPressNotifiee {
 
     private Vector3f initialPlayerPosition;
     private Player player;
+    private Camera cam1, cam2, cam3;
+    private float zoom_factor = 1;
+    protected CameraMode mode = CHASE;   //default is CHASE
     private Vector3f sunlightDirection;
     private ArrayList<Vector3f> treeLocation;
     private ArrayList<Building> city;
@@ -54,7 +59,14 @@ public class World {
 
     private Cube c;
 
+    protected enum CameraMode{
+        CHASE, PHOTO, OBSERVER
+    }
+
     public World(final String filename){
+        //subscribe to KeyPresses events!
+        KeyBinder.addKeyPressListener(this);
+
         //open the json file.
         FileReader fileReader = null;
         try {
@@ -71,6 +83,9 @@ public class World {
         JsonParser parse = new JsonParser();
         JsonReader reader = gson.newJsonReader(fileReader);
         jsonObject = (JsonObject) parse.parse(reader);
+
+        player = new Player();
+        
     }
 
     public void init(Shader shader){
@@ -192,10 +207,26 @@ public class World {
         emitter = new Emitter(SNOWFLAKE, new Vector3f(0,10,0));
         bill = new BillBoardTriangle(3.0f);
         bill.init();
+
+        //world has been initialized, now add dynamic things like players
+        player.init();
+        player.setPosition(initialPlayerPosition);
+        Vector3f dir = new Vector3f(player.getDirection());
+        dir.rotateAxis((float)Math.toRadians(70.0f), 0,1,0);
+        player.setDirection(dir.normalize(dir));
+
+        //Cameras
+        cam1 = new Camera();
+        cam2 = new Camera();
+        cam3 = new Camera();
+        cam3.orient(observerPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
+
     } //end init()
 
-    public void render(Shader shader, Player player){
-        this.player = player;
+    public void render(Shader shader){
+        Matrix4f worldToEye = updateCamera(shader);
+        updateLight(shader, worldToEye);
+
         shader.setUniform("ObjectToWorld", new Matrix4f());
 
         //draw the objects in the World:
@@ -228,7 +259,14 @@ public class World {
         emitter.update(shader, new Matrix4f());
         //Matrix4f location = new Matrix4f().translate(20,10,0);
         //bill.render(shader, location, player.getDirection());
-    }
+
+        //finished rendering the world, now render the player
+        player.render(shader);
+
+        //check for user input
+        KeyBinder.checkTheInput();  //there is value in doing this, because this gets called once per frame
+
+    }//end render
 
     private void drawTrees(Shader shader){
         for(int i=0; i < treeLocation.size(); i++)
@@ -344,6 +382,77 @@ public class World {
         mat.translate(position.x, position.y + step.getBaseRectHeight()/2.0f, position.z);  //center is at the center of the bottommost rectangle.
         shader.setUniform("ObjectToWorld", mat);
         step.render(shader, mat);
+    }
+
+    private Matrix4f updateCamera(Shader shader){
+        //temporary allocations for use below.
+        Matrix4f worldToEye = new Matrix4f();
+        Vector3f g = new Vector3f();    //placeholder/garbage; prevents data overwrite. because @*$% joml. //TODO: remove this expletive.
+        Vector3f arg1 = new Vector3f(); //placeholder for argument 1 to other functions.
+        Vector3f arg2 = new Vector3f(); //placeholder for argument 2 to other functions.
+
+        if( mode == CHASE){
+            //orient the camera
+            //player.getPosition().add(new Vector3f(0,5,0).add(player.getDirection().mul(-7.0f, player.getDirection()),g), arg1);   //cam location
+            player.getDirection().mul(-7.0f * zoom_factor, arg1);
+            new Vector3f(0,5,0).add(arg1, arg1);
+            player.getPosition().add(arg1, arg1);
+            //arg1.z *= zoom_factor;
+
+            player.getPosition().add(player.getDirection().mul(4.0f, g), arg2);                                                     //cam lookAt point
+            cam1.orient(arg1, arg2, new Vector3f(1,0,0));                                                                    //__,__,cam Up vector
+
+            //set the looking at matrix.
+            player.getPosition().add(player.getDirection().mul(10.0f, g), arg2);
+            worldToEye.lookAt(cam1.getPosition(), arg2, new Vector3f(0,1,0));
+
+            //set the shaders
+            shader.setUniform("WorldToEye", worldToEye);
+            shader.setUniform("Projection", cam1.getProjectionMatrix());
+        }
+        else if(mode == PHOTO){
+            cam2.orient(fixedPos, player.getPosition(), new Vector3f(0,1,0));
+            worldToEye.lookAt(fixedPos, player.getPosition(), new Vector3f(0,1,0));
+            shader.setUniform("WorldToEye", worldToEye);
+            shader.setUniform("Projection", cam2.getProjectionMatrix());
+        }
+        else if(mode == OBSERVER){
+            worldToEye = cam3.getViewMatrix();
+            shader.setUniform("WorldToEye", worldToEye);
+            shader.setUniform("Projection", cam3.getProjectionMatrix());
+        }
+        else {    //Unsupported Camera mode
+            System.err.println("Unsupported Camera Mode: "+ mode.toString());
+            System.exit(-1);
+        }
+        return worldToEye;
+    }
+
+    float test = 1.0f; boolean sunbool = false;
+    private void updateLight(Shader shader, Matrix4f worldToEye){
+
+        //draw the lamp's light
+        shader.setUniform("lampIntensity", new Vector3f(18.0f));
+        shader.setUniform("ambientIntensity", new Vector3f(1.0f));  //formerly 0.0f
+
+        for (int i = 0; i < lampData.size(); i++) {
+            Vector4f lampPosition = new Vector4f(lampData.get(i).x, lampData.get(i).y, lampData.get(i).z, 1.0f);
+            float lampHeight = lampData.get(i).w;
+            lampPosition.mul(worldToEye);    //originally worldToEye * lampPosition
+            shader.setUniform("lights["+i+"]",new Vector3f(lampPosition.x, lampPosition.y + lampHeight, lampPosition.z));
+        }
+
+        //sunlight
+        Vector4f sunlightDir = new Vector4f(sunlightDirection, 0.0f);    //0.0f, otherwise no sunlight.
+        sunlightDir.mul(worldToEye);
+        shader.setUniform("sunDirection", new Vector3f(sunlightDir.x, sunlightDir.y, sunlightDir.z));
+        shader.setUniform("sunIntensity", new Vector3f(test));  //1.0f
+        /////
+        if (sunbool) test += 0.01f;
+        else test -= 0.01f;
+        if (test >= 1.0f){ sunbool = !sunbool; test = 0.99f;}
+        else if (test <= 0.0f) { sunbool = !sunbool; test = 0.01f; }
+        /////
     }
 
     private void initTextures(Shader shader){
@@ -497,15 +606,65 @@ public class World {
         return result;
     }
 
-    public Vector3f getInitialPlayerPosition(){ return new Vector3f(initialPlayerPosition); }
+    //KeyPressNotifiee interface
+    final float MOVE_SPEED = 0.5f;
+    final float TURN_SPEED = 3.0f;
 
-    public Vector3f getFlyingPosition(){ return new Vector3f(observerPos); }
+    @Override
+    public void move_forward() {
+        if (mode == OBSERVER)
+            cam3.slide(cam3.getN().negate());
+        else if(mode == PHOTO || mode == CHASE)
+            player.move(MOVE_SPEED);
+    }
 
-    public Vector3f getFixedPosition(){ return new Vector3f(0,5,0).add(fixedPos); }
-    
-    public ArrayList<Vector4f> getLampData(){ return lampData; }
+    @Override
+    public void move_backward() {
+        if (mode == OBSERVER)
+            cam3.slide(cam3.getN());
+        else if(mode == PHOTO || mode == CHASE)
+            player.move(-MOVE_SPEED);
+    }
 
-    public Vector3f getSunlightDirection(){ return new Vector3f(sunlightDirection); }
+    @Override
+    public void move_left() {
 
+    }
 
+    @Override
+    public void move_right() {
+
+    }
+
+    @Override
+    public void turn_left() {
+        if (mode == OBSERVER)
+            cam3.slide(cam3.getU().negate());
+        else if(mode == PHOTO || mode == CHASE)
+            player.turn(TURN_SPEED);
+    }
+
+    @Override
+    public void turn_right() {
+        if (mode == OBSERVER)
+            cam3.slide(cam3.getU());
+        else if(mode == PHOTO || mode == CHASE)
+            player.turn(-TURN_SPEED);
+    }
+
+    @Override
+    public void jump() {
+        System.err.println("Jumping is not implemented yet.");
+    }
+
+    @Override
+    public void switch_mode(int cameraMode){
+        switch (cameraMode){
+            case 1: mode = CHASE; break;
+            case 2: mode = PHOTO; break;
+            case 3: mode = OBSERVER; break;
+            default: System.err.println("Unrecognized camera mode: " + cameraMode);
+        }
+    }
+    //End of KeyPressNotifiee Interface
 }
