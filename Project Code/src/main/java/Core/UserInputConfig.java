@@ -11,23 +11,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import static Core.KeyBinder.Action.*;
+import static Core.UserInputConfig.Action.*;
 
-public class KeyBinder implements KeyListener, MouseListener{
+public class UserInputConfig implements KeyListener, MouseListener{
 
     //Singleton Pattern
-    private static KeyBinder keyBinder;
-    public static KeyBinder getInstance(){
-        if (keyBinder == null) keyBinder = new KeyBinder();
-        return keyBinder;
+    private static UserInputConfig userInputConfig;
+    public static UserInputConfig getInstance(){
+        if (userInputConfig == null) userInputConfig = new UserInputConfig();
+        return userInputConfig;
     }
 
-    private static ArrayList<KeyPressNotifiee> subscribers = new ArrayList<>();
+    private static ArrayList<InputNotifiee> subscribers = new ArrayList<>();
 
     private static ConcurrentLinkedQueue<Short> keysDown;
     private static HashMap<Short, Action> keyConfigMap;
     private Point premouse, postmouse;
     private boolean mouse3down = false;
+    private static float zoom_factor = 1;
     private final float MAX_ZOOM_OUT = 2.5f;
     private final float MAX_ZOOM_IN = 0.3f;
 
@@ -38,7 +39,7 @@ public class KeyBinder implements KeyListener, MouseListener{
         switch_mode
     }
 
-    private KeyBinder(){
+    private UserInputConfig(){
         keysDown = new ConcurrentLinkedQueue<>();
         keyConfigMap = new HashMap<>();
 
@@ -55,21 +56,24 @@ public class KeyBinder implements KeyListener, MouseListener{
     }
 
     public static void checkTheInput(){
+        //TODO -refactoring: instead of having world.java call this function, have this class notify it's subscribers straight
+        //      from the event when the input is read from the user.
+
         //keyInput
         for (short key : keysDown){
             Action action = keyConfigMap.get(key);
             if (action != null){
                 //notify the subscribers
-                for (KeyPressNotifiee k : subscribers){
+                for (InputNotifiee s : subscribers){
                     switch(action){
-                        case move_forward: k.move_forward(); break;
-                        case move_backward: k.move_backward(); break;
-                        case move_left: k.move_left(); break;
-                        case move_right: k.move_right(); break;
-                        case turn_left: k.turn_left(); break;
-                        case turn_right: k.turn_right(); break;
-                        case jump: k.jump(); break;
-                        case switch_mode: k.switch_mode(key-48); break;
+                        case move_forward: s.move_forward(); break;
+                        case move_backward: s.move_backward(); break;
+                        case move_left: s.move_left(); break;
+                        case move_right: s.move_right(); break;
+                        case turn_left: s.turn_left(); break;
+                        case turn_right: s.turn_right(); break;
+                        case jump: s.jump(); break;
+                        case switch_mode: s.switch_mode(key-48); break;
                     }
                 }
             }//else action is null and not a key that has an action.
@@ -80,14 +84,13 @@ public class KeyBinder implements KeyListener, MouseListener{
         }
 
         //mouseInput
-        //TODO.
+        for (InputNotifiee s : subscribers){
+            s.zoom(zoom_factor);    //TODO -efficiency: only notify if zoom_factor has changed.
+        }
     }
 
-    void checkForMouseInput(){
 
-    }
-
-    public static void addKeyPressListener(KeyPressNotifiee subscriber){subscribers.add(subscriber);}
+    public static void addKeyPressListener(InputNotifiee subscriber){subscribers.add(subscriber);}
     public static void clearListeners(){subscribers.clear();}
 
 
@@ -139,7 +142,7 @@ public class KeyBinder implements KeyListener, MouseListener{
         premouse.x = postmouse.x;
         premouse.y = postmouse.y;
 
-        if (mode == OBSERVER) {
+        if (mode == DEBUG_VIEW) {
             cam3.rotate(displacement.x * 1.0f, new Vector3f(0, 1, 0));
             cam3.pitch(-displacement.y * 0.025f);
         }
@@ -158,7 +161,7 @@ public class KeyBinder implements KeyListener, MouseListener{
 
     @Override
     public void mouseWheelMoved(MouseEvent e) {
-/*        //e.getRotation() stores values as: {scroll up} [0.0, 1.0, 0.0], {scroll down} [0.0, -1.0, 0.0]
+        //e.getRotation() stores values as: {scroll up} [0.0, 1.0, 0.0], {scroll down} [0.0, -1.0, 0.0]
         if (e.getRotation()[1] < 0){   //if scrolling down
             zoom_factor += 0.1f;
             if (zoom_factor > MAX_ZOOM_OUT) zoom_factor = MAX_ZOOM_OUT;
@@ -167,7 +170,7 @@ public class KeyBinder implements KeyListener, MouseListener{
             zoom_factor -= 0.1f;
             if (zoom_factor < MAX_ZOOM_IN) zoom_factor = MAX_ZOOM_IN;
         }
-*/    }
+    }
 
     @Override
     public void mousePressed(MouseEvent e) {

@@ -61,7 +61,7 @@ public class Cone extends TriangleMesh {
             Vector3f surface = new Vector3f(0 - points[i * 6], 0 - points[i * 6 + 1], halfheight - 0);  //points from apex to base
             Vector3f radial = new Vector3f(0 - points[i * 6], 0 - points[i * 6 + 1], 0 - halfheight);			//points from edge of base to center of base
 
-            Vector3f tangent = new Vector3f();
+            Vector3f tangent = new Vector3f();  //what the...?
             surface.cross(radial,tangent);
 
             Vector3f normal = new Vector3f();

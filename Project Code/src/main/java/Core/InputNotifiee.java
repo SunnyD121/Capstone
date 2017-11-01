@@ -2,7 +2,7 @@ package Core;
 
 import java.awt.*;
 
-public interface KeyPressNotifiee {
+public interface InputNotifiee {
 
     //Keys
     void move_forward();
@@ -15,5 +15,6 @@ public interface KeyPressNotifiee {
     void switch_mode(int mode);
 
     //Mouse
+    void zoom(float amount);
 
 }

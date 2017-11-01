@@ -32,6 +32,7 @@ public class Main {
     Remove Commented Code /////Testing Normals (World.java)
     Cone Normal seems to not wrap around correctly.
 
+    Look into SSAO Screen space Ambient Occlusion for realistic ambient lighting.
 
     //TODO side projects of interest:
     glWindow.setDestroyNotification...something might be useful later on?
@@ -66,14 +67,13 @@ public class Main {
 
         //add Listeners
         GLListener gl = new GLListener();
-        KeyBinder keyListener = KeyBinder.getInstance();
+        UserInputConfig inputListener = UserInputConfig.getInstance();
         // Connect to main listener
         glWindow.addGLEventListener(gl);
         // add keyListener
-        glWindow.addKeyListener(keyListener);
+        glWindow.addKeyListener(inputListener);
         //add mouseListener
-        glWindow.addMouseListener(keyListener);
-
+        glWindow.addMouseListener(inputListener);
 
         // Handle window closing
         glWindow.addWindowListener(new WindowAdapter() {

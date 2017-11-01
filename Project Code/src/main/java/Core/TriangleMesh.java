@@ -3,7 +3,6 @@ package Core;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import java.nio.FloatBuffer;

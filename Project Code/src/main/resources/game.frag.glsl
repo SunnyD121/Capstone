@@ -36,7 +36,7 @@ void main() {
         vec3 h = normalize(l + v);
 
         //light equation, lamps
-        color += (1.0/(d*d)) * lampIntensity * (Kd * max(dot(n,l), 0.0) + Ks * pow(max(dot(h,n),0.0), shine));
+        color += (1.0/(d*d)) * lampIntensity * (Kd * max(dot(n,l), 0.0) + Ks * pow(max(dot(h,n),0.0), shine));  //find brightest lamp and use it to 1/color the others
     }
     //for the sun:
     vec3 l = normalize(sunDirection);
@@ -53,4 +53,7 @@ void main() {
 
     fragColor = vec4(color, 1.0);
     fragColor += texColor;  //replace diffuse light with the texture color and continue light calculations from there?
+
+    //test to see what the texture coordinates are. feel free to uncomment as necessary.
+    //fragColor = vec4(texCoords, 0.0, 0.0);  //all my textcoordinates are 0
 }

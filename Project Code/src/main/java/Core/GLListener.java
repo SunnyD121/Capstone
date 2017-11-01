@@ -10,6 +10,8 @@ import com.jogamp.opengl.GLCapabilitiesImmutable;
 import com.jogamp.opengl.JoglVersion;
 import com.jogamp.opengl.util.GLBuffers;
 
+
+
 //import static com.jogamp.opengl.GL.*;
 import static com.jogamp.opengl.GL.GL_DEPTH_TEST;
 import static com.jogamp.opengl.GL.GL_POLYGON_OFFSET_FILL;
@@ -23,6 +25,7 @@ import static com.jogamp.opengl.GL2ES2.GL_SHADING_LANGUAGE_VERSION;
 import static com.jogamp.opengl.GL2ES3.GL_MAJOR_VERSION;
 import static com.jogamp.opengl.GL2ES3.GL_MINOR_VERSION;
 
+
 import java.nio.IntBuffer;
 
 /**
@@ -34,6 +37,8 @@ public class GLListener implements GLEventListener {
     private Shader shader;
 
     public static GL4 gl;
+
+    long currentTime;
 
     public GLListener(){
         world = new World("Project Code/src/main/resources/race.json");
@@ -67,11 +72,24 @@ public class GLListener implements GLEventListener {
         gl.glPolygonOffset(1.0f, 1.0f);
 
         world.init(shader);
+
+        //initial framerate won't be completely accurate, but subsequent updates should be.
+        currentTime = System.currentTimeMillis();
+
     }
 
-
+    int count = 0;
     @Override
     public void display(GLAutoDrawable drawable) {
+        long temp = System.currentTimeMillis();
+        long displayLatency = temp - currentTime;
+        currentTime = temp;
+        float framerate = 1 / ((float)displayLatency/1000.0f);
+        if (count % 100 == 0)
+            System.out.printf("Display calls/Second: %.1f\n", framerate);
+        count++;
+
+
 
         gl.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

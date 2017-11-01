@@ -25,14 +25,13 @@ import java.util.ArrayList;
 import static Core.GLListener.gl;
 import static World.Emitter.ParticleType.SNOWFLAKE;
 import static World.World.CameraMode.CHASE;
-import static World.World.CameraMode.OBSERVER;
-import static World.World.CameraMode.PHOTO;
+import static World.World.CameraMode.DEBUG_VIEW;
 import static com.jogamp.opengl.GL.*;
 
 /**
  * Created by (User name) on 8/14/2017.
  */
-public class World implements KeyPressNotifiee {
+public class World implements InputNotifiee {
 
     private Vector3f initialPlayerPosition;
     private Player player;
@@ -44,7 +43,7 @@ public class World implements KeyPressNotifiee {
     private ArrayList<Building> city;
     private Rectangle ground;
     private JsonObject jsonObject;
-    private Vector3f fixedPos, observerPos;
+    private Vector3f fixedPos, DEBUG_VIEWPos;
     private ArrayList<Cylinder> forestTrunks;
     private ArrayList<Cone> forestTops;
     private ArrayList<Vector4f> lampData;  //(x,y,z,height)
@@ -60,12 +59,12 @@ public class World implements KeyPressNotifiee {
     private Cube c;
 
     protected enum CameraMode{
-        CHASE, PHOTO, OBSERVER
+        CHASE, DEBUG_VIEW
     }
 
     public World(final String filename){
         //subscribe to KeyPresses events!
-        KeyBinder.addKeyPressListener(this);
+        UserInputConfig.addKeyPressListener(this);
 
         //open the json file.
         FileReader fileReader = null;
@@ -98,9 +97,9 @@ public class World implements KeyPressNotifiee {
         JsonArray fixed = jsonObject.get("photoPosition").getAsJsonArray();
         fixedPos = new Vector3f(fixed.get(0).getAsFloat(), fixed.get(1).getAsFloat(), fixed.get(2).getAsFloat());
 
-        //observer camera position
+        //DEBUG_VIEW camera position
         JsonArray observe = jsonObject.get("observerPosition").getAsJsonArray();
-        observerPos = new Vector3f(observe.get(0).getAsFloat(), observe.get(1).getAsFloat(), observe.get(2).getAsFloat());
+        DEBUG_VIEWPos = new Vector3f(observe.get(0).getAsFloat(), observe.get(1).getAsFloat(), observe.get(2).getAsFloat());
 
         //Buildings
         JsonArray buildings = jsonObject.get("buildings").getAsJsonArray();
@@ -219,7 +218,7 @@ public class World implements KeyPressNotifiee {
         cam1 = new Camera();
         cam2 = new Camera();
         cam3 = new Camera();
-        cam3.orient(observerPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
+        cam3.orient(DEBUG_VIEWPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
 
     } //end init()
 
@@ -264,7 +263,7 @@ public class World implements KeyPressNotifiee {
         player.render(shader);
 
         //check for user input
-        KeyBinder.checkTheInput();  //there is value in doing this, because this gets called once per frame
+        UserInputConfig.checkTheInput();  //there is value in doing this, because this gets called once per frame
 
     }//end render
 
@@ -410,13 +409,13 @@ public class World implements KeyPressNotifiee {
             shader.setUniform("WorldToEye", worldToEye);
             shader.setUniform("Projection", cam1.getProjectionMatrix());
         }
-        else if(mode == PHOTO){
-            cam2.orient(fixedPos, player.getPosition(), new Vector3f(0,1,0));
-            worldToEye.lookAt(fixedPos, player.getPosition(), new Vector3f(0,1,0));
-            shader.setUniform("WorldToEye", worldToEye);
-            shader.setUniform("Projection", cam2.getProjectionMatrix());
-        }
-        else if(mode == OBSERVER){
+//        else if(mode == PHOTO){
+//            cam2.orient(fixedPos, player.getPosition(), new Vector3f(0,1,0));
+//            worldToEye.lookAt(fixedPos, player.getPosition(), new Vector3f(0,1,0));
+//            shader.setUniform("WorldToEye", worldToEye);
+//            shader.setUniform("Projection", cam2.getProjectionMatrix());
+//        }
+        else if(mode == DEBUG_VIEW){
             worldToEye = cam3.getViewMatrix();
             shader.setUniform("WorldToEye", worldToEye);
             shader.setUniform("Projection", cam3.getProjectionMatrix());
@@ -606,23 +605,23 @@ public class World implements KeyPressNotifiee {
         return result;
     }
 
-    //KeyPressNotifiee interface
+    //InputNotifiee interface
     final float MOVE_SPEED = 0.5f;
     final float TURN_SPEED = 3.0f;
 
     @Override
     public void move_forward() {
-        if (mode == OBSERVER)
+        if (mode == DEBUG_VIEW)
             cam3.slide(cam3.getN().negate());
-        else if(mode == PHOTO || mode == CHASE)
+        else if(mode == CHASE)
             player.move(MOVE_SPEED);
     }
 
     @Override
     public void move_backward() {
-        if (mode == OBSERVER)
+        if (mode == DEBUG_VIEW)
             cam3.slide(cam3.getN());
-        else if(mode == PHOTO || mode == CHASE)
+        else if(mode == CHASE)
             player.move(-MOVE_SPEED);
     }
 
@@ -638,17 +637,17 @@ public class World implements KeyPressNotifiee {
 
     @Override
     public void turn_left() {
-        if (mode == OBSERVER)
+        if (mode == DEBUG_VIEW)
             cam3.slide(cam3.getU().negate());
-        else if(mode == PHOTO || mode == CHASE)
+        else if(mode == CHASE)
             player.turn(TURN_SPEED);
     }
 
     @Override
     public void turn_right() {
-        if (mode == OBSERVER)
+        if (mode == DEBUG_VIEW)
             cam3.slide(cam3.getU());
-        else if(mode == PHOTO || mode == CHASE)
+        else if(mode == CHASE)
             player.turn(-TURN_SPEED);
     }
 
@@ -661,10 +660,14 @@ public class World implements KeyPressNotifiee {
     public void switch_mode(int cameraMode){
         switch (cameraMode){
             case 1: mode = CHASE; break;
-            case 2: mode = PHOTO; break;
-            case 3: mode = OBSERVER; break;
+            case 2: mode = DEBUG_VIEW; break;
             default: System.err.println("Unrecognized camera mode: " + cameraMode);
         }
     }
-    //End of KeyPressNotifiee Interface
+
+    @Override
+    public void zoom(float amount){
+        zoom_factor = amount;
+    }
+    //End of InputNotifiee Interface
 }
