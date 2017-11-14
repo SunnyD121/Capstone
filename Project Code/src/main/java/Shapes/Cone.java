@@ -58,11 +58,11 @@ public class Cone extends TriangleMesh {
             points[i * 6 + 5] = halfheight;
 
             //normals
-            Vector3f surface = new Vector3f(0 - points[i * 6], 0 - points[i * 6 + 1], halfheight - 0);  //points from apex to base
-            Vector3f radial = new Vector3f(0 - points[i * 6], 0 - points[i * 6 + 1], 0 - halfheight);			//points from edge of base to center of base
+            Vector3f surface = new Vector3f(0 - points[i * 6], 0 - points[i * 6 + 1], halfheight - (-halfheight));  //points from apex to base
+            Vector3f radial = new Vector3f(0 - points[i * 6], 0 - points[i * 6 + 1], (-halfheight) - (-halfheight));			//points from edge of base to center of base
 
-            Vector3f tangent = new Vector3f();  //what the...?
-            surface.cross(radial,tangent);
+            Vector3f tangent = new Vector3f();
+            surface.cross(radial, tangent); //surface cross radial, store in tangent.
 
             Vector3f normal = new Vector3f();
             surface.cross(tangent, normal);
@@ -73,15 +73,17 @@ public class Cone extends TriangleMesh {
             normals[i * 6 + 2] = normal.z;
             //centernormal duplications
             Vector3f midpoint = new Vector3f(
-                    radius * (float)Math.cos(angle) + radius*(float)Math.cos((2 * (float)Math.PI) / (2 * slices)),
-                    radius * (float)Math.sin(angle) + radius*(float)Math.sin((2 * (float)Math.PI) / (2 * slices)),
+                    (points[i * 6] + radius * (float)Math.cos(factor * (i+1))) / 2,
+                    (points[i * 6] + radius * (float)Math.sin(factor * (i+1))) / 2,
                     -halfheight
-            ); //finds the midpoint at the base of the triangle
+            );  //finds the midpoint at the base of the triangle
             surface = new Vector3f(0 - midpoint.x, 0 - midpoint.y, halfheight - midpoint.z);
             radial = new Vector3f(0 - midpoint.x, 0 - midpoint.y, -halfheight - midpoint.z);
             surface.cross(radial, tangent);
-            surface.cross(tangent, normal);
-            normal.normalize();
+            //surface.cross(tangent, normal);   //See Note
+            //normal.normalize();               //See Note
+
+            //NOTE: Currently using the first point of the fragments' normal as the apex normal. TODO: Fix this.
 
             normals[i * 6 + 3] = normal.x;
             normals[i * 6 + 4] = normal.y;

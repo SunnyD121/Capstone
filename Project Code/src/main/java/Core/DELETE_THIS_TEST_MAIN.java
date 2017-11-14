@@ -19,7 +19,11 @@ public class DELETE_THIS_TEST_MAIN {
     public static void main(String[] args) {
 
 
-
+    final int[] array = new int[4];
+    array[3] = 3;
+    array[3] = 2;
+    System.out.println(array[3]);
+    //array = new int[4];
 
 
 

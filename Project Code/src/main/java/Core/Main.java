@@ -13,21 +13,15 @@ public class Main {
 
     /*TODO List:
     improve mouse-camera and key-camera interaction to the feel of modern games.
-    clean up camera alterations in GLListener. Maybe make more methods in Camera? Want to have very little Camera code in GLListener.
     Look into other weather effects.
     Possible refactoring: drawLamp()/drawTree() code is almost identical.
-    See if possible to move lamp rendering to World from GLListener
     Add collisions
     Look into the sun
     Fiddle with the light equations in the shaders, dont make color so additive. (lamp vs sun isnt additive, it has a diminished return irl)
     Check shapes for incorrect normals.
-    Remove Cube c from World (init, render)
-    Remove theTexture from World
     Player.java: commented code (color)
     Write Tests!!
     Pyramid Normals (same for 3 vertices of a face, or true to the corners?)
-    Cone Normals not wrapping properly.
-    World.render() currently passes a Player object. Remove this. terribly smelly.
 
     Remove Commented Code /////Testing Normals (World.java)
     Cone Normal seems to not wrap around correctly.

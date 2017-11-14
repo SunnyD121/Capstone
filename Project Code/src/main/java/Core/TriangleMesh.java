@@ -122,14 +122,14 @@ public abstract class TriangleMesh {
         bufName = intBuffer.get(bufIndex);
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufName);
         gl.glVertexAttribPointer(1,3,GL.GL_FLOAT,false,0,0);
-        gl.glEnableVertexAttribArray(bufIndex);
+        gl.glEnableVertexAttribArray(1);    //this parameter matches the layout value in vertex shader
 
         if(normals != null){
             bufIndex++;
             bufName = intBuffer.get(bufIndex);
             gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufName);
             gl.glVertexAttribPointer(2,3,GL.GL_FLOAT,false,0,0);
-            gl.glEnableVertexAttribArray(bufIndex);
+            gl.glEnableVertexAttribArray(2);
         }
 
         if(colors != null){
@@ -137,7 +137,7 @@ public abstract class TriangleMesh {
             bufName = intBuffer.get(bufIndex);
             gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufName);
             gl.glVertexAttribPointer(3,4,GL.GL_FLOAT,false,0,0);
-            gl.glEnableVertexAttribArray(bufIndex);
+            gl.glEnableVertexAttribArray(3);
         }
 
         if(textureCoords != null){
@@ -145,7 +145,7 @@ public abstract class TriangleMesh {
             bufName = intBuffer.get(bufIndex);
             gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufName);
             gl.glVertexAttribPointer(4,2,GL.GL_FLOAT,false,0,0);
-            gl.glEnableVertexAttribArray(bufIndex);
+            gl.glEnableVertexAttribArray(4);
         }
 
         gl.glBindVertexArray(0);

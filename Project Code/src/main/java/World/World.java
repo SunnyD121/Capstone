@@ -1,25 +1,25 @@
 package World;
 
 import Core.*;
+import GUI.PauseMenu;
 import Shapes.*;
 import Shapes.Rectangle;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
-import com.jogamp.opengl.GL;
+
 import com.jogamp.opengl.GL4;
-import com.jogamp.opengl.util.GLBuffers;
-import com.jogamp.opengl.util.texture.Texture;
+
 import com.jogamp.opengl.util.texture.TextureData;
 import com.jogamp.opengl.util.texture.TextureIO;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
+
+import java.io.FileReader;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.io.IOException;
+
 import java.util.ArrayList;
 
 import static Core.GLListener.gl;
@@ -43,7 +43,7 @@ public class World implements InputNotifiee {
     private ArrayList<Building> city;
     private Rectangle ground;
     private JsonObject jsonObject;
-    private Vector3f fixedPos, DEBUG_VIEWPos;
+    private Vector3f fixedPos, debuggerStartPos;
     private ArrayList<Cylinder> forestTrunks;
     private ArrayList<Cone> forestTops;
     private ArrayList<Vector4f> lampData;  //(x,y,z,height)
@@ -51,12 +51,10 @@ public class World implements InputNotifiee {
     private ArrayList<IcoSphere> lampBulbs;
     private ArrayList<Vector3f> stepPyramidPosition;
     private ArrayList<StepPyramid> stepPyramids;
-    private Texture theTexture;
-    private int textureID; //TODO: remove this?
+    private int[] textureIDs = new int[4];  //change this value per number of textures being loaded.
     private Emitter emitter;
     private BillBoardTriangle bill;
-
-    private Cube c;
+    private PauseMenu pauseMenu;
 
     protected enum CameraMode{
         CHASE, DEBUG_VIEW
@@ -76,18 +74,16 @@ public class World implements InputNotifiee {
             System.exit(-1);
         }
 
-        c = new Cube(3.0f);
-
         Gson gson = new Gson();
         JsonParser parse = new JsonParser();
         JsonReader reader = gson.newJsonReader(fileReader);
         jsonObject = (JsonObject) parse.parse(reader);
 
         player = new Player();
-        
+
     }
 
-    public void init(Shader shader){
+    public void init(){
         //bounding box coordinates, forms two opposite vertices.
         JsonArray bbox = jsonObject.get("bbox").getAsJsonArray();
         Vector3f min = new Vector3f(bbox.get(0).getAsFloat(), bbox.get(1).getAsFloat(), bbox.get(2).getAsFloat());
@@ -99,7 +95,7 @@ public class World implements InputNotifiee {
 
         //DEBUG_VIEW camera position
         JsonArray observe = jsonObject.get("observerPosition").getAsJsonArray();
-        DEBUG_VIEWPos = new Vector3f(observe.get(0).getAsFloat(), observe.get(1).getAsFloat(), observe.get(2).getAsFloat());
+        debuggerStartPos = new Vector3f(observe.get(0).getAsFloat(), observe.get(1).getAsFloat(), observe.get(2).getAsFloat());
 
         //Buildings
         JsonArray buildings = jsonObject.get("buildings").getAsJsonArray();
@@ -188,10 +184,7 @@ public class World implements InputNotifiee {
         }
 
         //Textures
-        //initTextures(shader);
-        //loadTextures(shader, new int[1]);
-        //initializeTexture();
-        initTex();
+        initTextures();
 
         //init calls
         for (Building b : city) b.init();
@@ -202,7 +195,6 @@ public class World implements InputNotifiee {
         for (StepPyramid step : stepPyramids) step.init();
         ground.init();
 
-        c.init();
         emitter = new Emitter(SNOWFLAKE, new Vector3f(0,10,0));
         bill = new BillBoardTriangle(3.0f);
         bill.init();
@@ -218,14 +210,17 @@ public class World implements InputNotifiee {
         cam1 = new Camera();
         cam2 = new Camera();
         cam3 = new Camera();
-        cam3.orient(DEBUG_VIEWPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
+        cam3.orient(debuggerStartPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
+
 
     } //end init()
 
+    boolean isPaused = false;
     public void render(Shader shader){
         Matrix4f worldToEye = updateCamera(shader);
         updateLight(shader, worldToEye);
 
+        shader.setUniform("tex", 0);    //TODO: This only needs to be called one in init, but I don't want to pass a shader argument?   //EDIT: Does this need to be called?
         shader.setUniform("ObjectToWorld", new Matrix4f());
 
         //draw the objects in the World:
@@ -236,23 +231,11 @@ public class World implements InputNotifiee {
         drawStepPyramids(shader);
 
 
-        Material m = new Material();
-        m.Kd = new Vector3f(0); //Textures need black.
-        m.setUniforms(shader);
+        /*Texture calls, for reference.
         gl.glActiveTexture(GL_TEXTURE0);
         gl.glBindTexture(GL_TEXTURE_2D, textureID);
-        //theTexture.enable(gl);
-        //theTexture.bind(gl);
-        shader.setUniform("tex", 0);
-
-
-        Matrix4f move = new Matrix4f().translate(0,5,20);
-        shader.setUniform("ObjectToWorld",move);
-        c.render();
-
-        //theTexture.disable(gl);
         gl.glBindTexture(GL_TEXTURE_2D, 0); //unbind
-
+        */
 
         //TODO: change emitter Material. (maybe in the Emitter or particle class themself?
         emitter.update(shader, new Matrix4f());
@@ -350,21 +333,35 @@ public class World implements InputNotifiee {
     }
 
     private void drawBuildings(Shader shader){
+
         Material m = new Material();
-        m.Kd = new Vector3f(0.5f, 0.5f, 0.2f);      //Yellow
+        //m.Kd = new Vector3f(0.5f, 0.5f, 0.2f);      //Yellow
+        m.Kd = new Vector3f(0);
         m.setUniforms(shader);
+
+        gl.glActiveTexture(GL_TEXTURE0);
+        gl.glBindTexture(GL_TEXTURE_2D, textureIDs[1]);
 
         for(Building b : city)
             b.render();
+
+        gl.glBindTexture(GL_TEXTURE_2D, 0); //unbind
     }
 
     private void drawGround(Shader shader){
+        shader.setUniform("ObjectToWorld", new Matrix4f());
+
         Material m = new Material();
-        m.Kd = new Vector3f(0,1,0);     //green
+        //m.Kd = new Vector3f(0,1,0);     //green
+        m.Kd = new Vector3f(0,0.1f,0);
         m.setUniforms(shader);
 
-        shader.setUniform("ObjectToWorld", new Matrix4f());
+        gl.glActiveTexture(GL_TEXTURE0);
+        gl.glBindTexture(GL_TEXTURE_2D, textureIDs[2]);
+
         ground.render();
+
+        gl.glBindTexture(GL_TEXTURE_2D, 0); //unbind
     }
 
     private void drawStepPyramids(Shader shader){
@@ -409,12 +406,6 @@ public class World implements InputNotifiee {
             shader.setUniform("WorldToEye", worldToEye);
             shader.setUniform("Projection", cam1.getProjectionMatrix());
         }
-//        else if(mode == PHOTO){
-//            cam2.orient(fixedPos, player.getPosition(), new Vector3f(0,1,0));
-//            worldToEye.lookAt(fixedPos, player.getPosition(), new Vector3f(0,1,0));
-//            shader.setUniform("WorldToEye", worldToEye);
-//            shader.setUniform("Projection", cam2.getProjectionMatrix());
-//        }
         else if(mode == DEBUG_VIEW){
             worldToEye = cam3.getViewMatrix();
             shader.setUniform("WorldToEye", worldToEye);
@@ -445,7 +436,7 @@ public class World implements InputNotifiee {
         Vector4f sunlightDir = new Vector4f(sunlightDirection, 0.0f);    //0.0f, otherwise no sunlight.
         sunlightDir.mul(worldToEye);
         shader.setUniform("sunDirection", new Vector3f(sunlightDir.x, sunlightDir.y, sunlightDir.z));
-        shader.setUniform("sunIntensity", new Vector3f(test));  //1.0f
+        shader.setUniform("sunIntensity", new Vector3f(1.0f));  //test
         /////
         if (sunbool) test += 0.01f;
         else test -= 0.01f;
@@ -454,155 +445,52 @@ public class World implements InputNotifiee {
         /////
     }
 
-    private void initTextures(Shader shader){
-        IntBuffer texturebuf = GLBuffers.newDirectIntBuffer(1);
-        //null texture
-        int[] nulltexture = new int[4];
-        Vector3f color = new Vector3f(0.0f);
-        nulltexture[0] = (byte)color.x;
-        nulltexture[1] = (byte)color.y;
-        nulltexture[2] = (byte)color.z;
-        nulltexture[3] = (byte)255;
-
-        gl.glActiveTexture(GL_TEXTURE0);
-        gl.glGenTextures(1,texturebuf);
-        gl.glBindTexture(GL_TEXTURE_2D, texturebuf.get(0));
-
-        theTexture = null;
-        String filepath = "Project Code/src/main/resources/textures/facade1.jpg";
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try{ImageIO.write(ImageIO.read(new File(filepath)), "png", outputStream);}
-        catch(IOException e){System.err.println("there's been an exception!");}
-        InputStream fis = new ByteArrayInputStream(outputStream.toByteArray());
-        try{theTexture = TextureIO.newTexture(fis, true, TextureIO.JPG);}
-        catch(IOException e){System.err.println("there's been an exception! A different one!");}
-        //TODO: clean this mess up.
-        ByteBuffer pixelData = GLBuffers.newDirectByteBuffer(16384);        //TODO: Was hardcoded.
-        BufferedImage bufImage = null;
-        try{bufImage = ImageIO.read(new File(filepath));}
-        catch(Throwable threat){threat.printStackTrace();}
-        byte[] barray = getPixels(bufImage, 512, 512);    //TODO: Hardcoded
-        pixelData = ByteBuffer.wrap(barray);
-
-/*
-        System.out.println("height: "+theTexture.getHeight());
-        System.out.println("width: "+theTexture.getWidth());
-        System.out.println("Iheight: "+theTexture.getImageHeight());
-        System.out.println("Iwidth: "+theTexture.getImageWidth());
-        System.out.println("TexCoords: "+theTexture.getImageTexCoords());
-        System.out.println("Texture: "+theTexture.toString());
-        System.out.println("Bytes: "+theTexture.getEstimatedMemorySize());
-*/
-        System.err.println("before: "+Utilities.iBufToString(texturebuf));
-        gl.glActiveTexture(GL.GL_TEXTURE0);
-        gl.glGenTextures(1, texturebuf);
-        System.err.println("genTexs: "+Utilities.iBufToString(texturebuf));
-        gl.glBindTexture(GL_TEXTURE_2D, texturebuf.get(0));
-        System.err.println("bindTex: "+Utilities.iBufToString(texturebuf));
-        gl.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, theTexture.getImageWidth(), theTexture.getImageHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);     //8 * theTexture.getEstimatedMemorySize()
-        System.err.println("teximage2d: "+Utilities.iBufToString(texturebuf));
+    private void initTextures(){
+        TextureData textureData;
+        //Texture 1
+        textureData = helperTextureIO("/textures/facade1.jpg", 1);
+        //texturing options
+        gl.glTexParameteri(GL_TEXTURE_2D, GL4.GL_TEXTURE_BASE_LEVEL, 0);
+        gl.glTexParameteri(GL_TEXTURE_2D, GL4.GL_TEXTURE_MAX_LEVEL, 0);
         gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        System.err.println("texparam1: "+Utilities.iBufToString(texturebuf));
         gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        System.err.println("texparam2: "+Utilities.iBufToString(texturebuf));
+        createTexture(textureData);
 
-        textureID = texturebuf.get(0);
-        
-        shader.setUniform("tex", 0);
+        //Texture 2
+        textureData = helperTextureIO("/textures/grass.png", 2);
+        createTexture(textureData);
 
-    }
-    private void loadTextures(Shader shader, int[] textures){
-        textures = new int[2];
-        gl.glActiveTexture(GL.GL_TEXTURE0);
-        gl.glGenTextures(1, textures, 1);
-        gl.glBindTexture(GL.GL_TEXTURE_2D, textures[1]);
-        try {
-            BufferedImage image = ImageIO.read(new File("Project Code/src/main/resources/textures/facade1.jpg"));
-            //DataBufferByte dbb = (DataBufferByte)image.getRaster().getDataBuffer();
-            //byte[] data = dbb.getData();
-            byte[] dataRGBA = getPixels(image, image.getWidth(), image.getHeight());
-            ByteBuffer pixels = GLBuffers.newDirectByteBuffer(dataRGBA.length);
-            pixels.put(dataRGBA);
-            pixels.flip();
-            gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, 64, 64, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, pixels);
-            /////
-            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            /////
-        } catch(Throwable t) {
-            t.printStackTrace();
-        }
-        System.out.println("building texture ID: "+textures[1]);
-        //null texture
 
-        int[] nulltexture = new int[4];
-        Vector3f color = new Vector3f(0.0f);
-        nulltexture[0] = (byte)color.x;
-        nulltexture[1] = (byte)color.y;
-        nulltexture[2] = (byte)color.z;
-        nulltexture[3] = (byte)255;
 
-        gl.glActiveTexture(GL_TEXTURE0);
-        gl.glGenTextures(1, textures, 0);
-        gl.glBindTexture(GL_TEXTURE_2D, textures[0]);
-        System.out.println("null texture ID: "+textures[0]);
-
-        shader.setUniform("tex", 0);
-    }
-    private void initializeTexture(){
-        String filepath = "Project Code/src/main/resources/textures/facade1.jpg";
-        //gl.glEnable(GL_TEXTURE_2D); //commented because use of shaders.
-        gl.glActiveTexture(GL.GL_TEXTURE0);
-        try{
-            File im = new File(filepath);       //possible conversion causing white box?
-            Texture t = TextureIO.newTexture(im, false);
-            textureID = t.getTextureObject(gl);
-            System.out.println(textureID);
-            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        }
-        catch (Throwable trap){
-            trap.printStackTrace();
-        }
-        
+        //shader.setUniform("tex", 0);
+        //TODO: do I need a null texture? cross reference with C++ code.
+        gl.glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    private void initTex(){
+    private TextureData helperTextureIO(String filename, int iD) {
+        InputStream texStream = null;
+        TextureData textureData = null;
         try {
             //read texture picture file
-            InputStream texStream = getClass().getResourceAsStream("/textures/facade2.jpg");
-            TextureData textureData = TextureIO.newTextureData(gl.getGLProfile(), texStream, false, TextureIO.JPG);
+            texStream = getClass().getResourceAsStream(filename);
+            String fileSuffix = filename.substring(filename.length()-3, filename.length());
+            textureData = TextureIO.newTextureData(gl.getGLProfile(), texStream, false, fileSuffix);    //TextureIO.JPG or TextureIO.PNG
             //create and load buffers
             int[] texNames = new int[1];
             gl.glGenTextures(1, texNames, 0);
-            textureID = texNames[0];
+            textureIDs[iD] = texNames[0];   //if this gives arrayOutOfBoundsException, go up to the top and equal the array size with number of textures.
             gl.glActiveTexture(GL_TEXTURE0);
-            gl.glBindTexture(GL_TEXTURE_2D, textureID);
-            //texturing options
-            gl.glTexParameteri(GL_TEXTURE_2D, GL4.GL_TEXTURE_BASE_LEVEL, 0);
-            gl.glTexParameteri(GL_TEXTURE_2D, GL4.GL_TEXTURE_MAX_LEVEL, 0);
-            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-            gl.glTexStorage2D(GL_TEXTURE_2D, 1, textureData.getInternalFormat(), textureData.getWidth(), textureData.getHeight());
-            gl.glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,textureData.getWidth(), textureData.getHeight(), textureData.getPixelFormat(), textureData.getPixelType(), textureData.getBuffer());
-
+            gl.glBindTexture(GL_TEXTURE_2D, textureIDs[iD]);
         }
-        catch (IOException e){System.err.println("Failed to load texture."); e.printStackTrace();}
+        catch (IOException e){System.err.println("Failed to load texture: " + filename); e.printStackTrace();}
+
+        return textureData;
     }
 
-    private byte[] getPixels(BufferedImage image, int width, int height) {
-        byte[] result = new byte[height * width * 4];
-        for (int y = 0; y < image.getHeight(); y++) {
-            for (int x = 0; x < image.getWidth(); x++) {
-                Color c = new Color(image.getRGB(x, y), true);
-                result[x + y * width + 0] = (byte)c.getRed();
-                result[x + y * width + 1] = (byte)c.getGreen();
-                result[x + y * width + 2] = (byte)c.getBlue();
-                result[x + y * width + 3] = (byte)c.getAlpha();
-            }
-        }
-        return result;
+    private void createTexture(TextureData textureData){
+        gl.glTexStorage2D(GL_TEXTURE_2D, 1, textureData.getInternalFormat(), textureData.getWidth(), textureData.getHeight());
+        gl.glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,textureData.getWidth(), textureData.getHeight(), textureData.getPixelFormat(), textureData.getPixelType(), textureData.getBuffer());
+
     }
 
     //InputNotifiee interface
@@ -663,6 +551,15 @@ public class World implements InputNotifiee {
             case 2: mode = DEBUG_VIEW; break;
             default: System.err.println("Unrecognized camera mode: " + cameraMode);
         }
+    }
+
+    //NOTES: THink about reworking how keys are handled, splitting into toggle keys and other (w,s,a,d)-like keys
+    @Override
+    public void pause(){
+        //TODO: pause animation?
+        isPaused = !isPaused;
+        System.out.println("Key Pressed! isPaused: " + isPaused);
+        PauseMenu.setVisibility(true);
     }
 
     @Override

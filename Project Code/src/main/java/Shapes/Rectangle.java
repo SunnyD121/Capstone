@@ -49,11 +49,14 @@ public class Rectangle extends TriangleMesh {
         elements[4] = 2;
         elements[5] = 3;
 
+        float[] tex = {0.0f, 0.0f, 5.0f, 0.0f, 5.0f, 5.0f, 0.0f, 5.0f};
+
         FloatBuffer p = GLBuffers.newDirectFloatBuffer(points);
         FloatBuffer n = GLBuffers.newDirectFloatBuffer(normals);
         IntBuffer e = GLBuffers.newDirectIntBuffer(elements);
+        FloatBuffer t = GLBuffers.newDirectFloatBuffer(tex);
 
-        initGpuVertexArrays(e, p, n, null, null);
+        initGpuVertexArrays(e, p, n, null, t);
     }
 
 

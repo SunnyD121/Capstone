@@ -1,13 +1,13 @@
 #version 410
 
-layout(location=1) in vec4 vPosition;
+layout(location=1) in vec4 vPosition;   //coordinates in shape coordinate space
 layout(location=2) in vec4 vNormal;
 //layout(location=3) in vec4 vColor;    //Color given from TriangleMesh's.
 layout(location=4) in vec2 vTexCoord;
 
-uniform mat4 ObjectToWorld;
-uniform mat4 Projection;
-uniform mat4 WorldToEye;
+uniform mat4 ObjectToWorld; //for converting from shape space to world space
+uniform mat4 Projection;    //TODO: remember what this is for. Something about necessary further down graphics pipeline.
+uniform mat4 WorldToEye;    //for converting from world space to camera space (where we render the scene from)
 
 //return variables; must match in vars @.frag.glsl
 out vec3 normal;

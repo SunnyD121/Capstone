@@ -1,5 +1,6 @@
 package Core;
 
+import GUI.PauseMenu;
 import World.World;
 
 //import com.jogamp.opengl.*;
@@ -9,7 +10,6 @@ import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLCapabilitiesImmutable;
 import com.jogamp.opengl.JoglVersion;
 import com.jogamp.opengl.util.GLBuffers;
-
 
 
 //import static com.jogamp.opengl.GL.*;
@@ -35,6 +35,7 @@ public class GLListener implements GLEventListener {
 
     private World world;
     private Shader shader;
+    private PauseMenu pauseMenu;
 
     public static GL4 gl;
 
@@ -43,6 +44,7 @@ public class GLListener implements GLEventListener {
     public GLListener(){
         world = new World("Project Code/src/main/resources/race.json");
     }
+
     @Override
     public void init(GLAutoDrawable drawable) {
         gl = drawable.getGL().getGL4();
@@ -71,7 +73,8 @@ public class GLListener implements GLEventListener {
         gl.glEnable(GL_POLYGON_OFFSET_FILL);
         gl.glPolygonOffset(1.0f, 1.0f);
 
-        world.init(shader);
+        world.init();
+        pauseMenu = PauseMenu.getInstance();
 
         //initial framerate won't be completely accurate, but subsequent updates should be.
         currentTime = System.currentTimeMillis();
@@ -85,11 +88,9 @@ public class GLListener implements GLEventListener {
         long displayLatency = temp - currentTime;
         currentTime = temp;
         float framerate = 1 / ((float)displayLatency/1000.0f);
-        if (count % 100 == 0)
+        if (count % 100 == 5)
             System.out.printf("Display calls/Second: %.1f\n", framerate);
         count++;
-
-
 
         gl.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

@@ -1,7 +1,5 @@
 package Core;
 
-import java.awt.*;
-
 public interface InputNotifiee {
 
     //Keys
@@ -13,6 +11,7 @@ public interface InputNotifiee {
     void turn_right();
     void jump();
     void switch_mode(int mode);
+    void pause();
 
     //Mouse
     void zoom(float amount);

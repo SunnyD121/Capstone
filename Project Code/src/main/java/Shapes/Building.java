@@ -1,7 +1,8 @@
-package World;
+package Shapes;
 
 import Core.TriangleMesh;
 import Core.Utilities;
+import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Vector3f;
 
 import java.nio.FloatBuffer;
@@ -36,11 +37,20 @@ public class Building extends TriangleMesh{
         buildTop(points, normals, index, 0,1,2);
         buildTop(points, normals, index, 0,2,3);
 
+        float tex[] = {
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f };
+
         FloatBuffer p = Utilities.convertF(points);
         FloatBuffer n = Utilities.convertF(normals);
         IntBuffer i = Utilities.convertI(index);
+        FloatBuffer textureBuf = GLBuffers.newDirectFloatBuffer(tex);
 
-        initGpuVertexArrays(i, p, n, null, null);
+        initGpuVertexArrays(i, p, n, null, textureBuf);
     }
 
     public void setData(Vector3f[] base, float[] height){
