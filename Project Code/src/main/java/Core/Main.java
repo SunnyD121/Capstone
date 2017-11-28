@@ -1,5 +1,6 @@
 package Core;
 
+import Trash.UserInputConfig;
 import com.jogamp.newt.event.WindowAdapter;
 import com.jogamp.newt.event.WindowEvent;
 import com.jogamp.newt.opengl.GLWindow;
@@ -61,13 +62,12 @@ public class Main {
 
         //add Listeners
         GLListener gl = new GLListener();
-        UserInputConfig inputListener = UserInputConfig.getInstance();
         // Connect to main listener
         glWindow.addGLEventListener(gl);
         // add keyListener
-        glWindow.addKeyListener(inputListener);
+        glWindow.addKeyListener(InputHandler.getInstance());
         //add mouseListener
-        glWindow.addMouseListener(inputListener);
+        glWindow.addMouseListener(InputHandler.getInstance());
 
         // Handle window closing
         glWindow.addWindowListener(new WindowAdapter() {

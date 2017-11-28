@@ -1,6 +1,6 @@
 package Core;
 
-import Core.Utilities;
+import Utilities.Utilities;
 import com.jogamp.opengl.util.GLBuffers;
 import com.sun.istack.internal.Nullable;
 import org.joml.Matrix3f;
@@ -194,6 +194,10 @@ public class Shader {
 
         gl.glDeleteShader(stageId);
         return Utilities.bytesToString(bytes);
+    }
+
+    public int getProgramID(){
+        return m_programID;
     }
 
     public class ShaderException extends Exception{

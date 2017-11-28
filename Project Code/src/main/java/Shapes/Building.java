@@ -1,7 +1,7 @@
 package Shapes;
 
 import Core.TriangleMesh;
-import Core.Utilities;
+import Utilities.Utilities;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Vector3f;
 

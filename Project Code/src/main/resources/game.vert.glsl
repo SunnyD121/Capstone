@@ -8,11 +8,13 @@ layout(location=4) in vec2 vTexCoord;
 uniform mat4 ObjectToWorld; //for converting from shape space to world space
 uniform mat4 Projection;    //TODO: remember what this is for. Something about necessary further down graphics pipeline.
 uniform mat4 WorldToEye;    //for converting from world space to camera space (where we render the scene from)
+uniform mat4 ShadowMatrix;  //for computing the location of shadow...?  //TODO: Investigate this.
 
 //return variables; must match in vars @.frag.glsl
 out vec3 normal;
 out vec3 eyePos;    //the position of the surface in eye coordinates
 out vec2 texCoords;
+out vec4 shadowCoord;
 
 void main() {
     mat4 toEye = WorldToEye * ObjectToWorld;
@@ -26,6 +28,9 @@ void main() {
 
     //sending texture data to other shader
     texCoords = vTexCoord;
+
+    //shadow Coordinates
+    shadowCoord = (ShadowMatrix * ObjectToWorld) * vPosition;
 
     gl_Position = Projection * toEye * vPosition;
 }

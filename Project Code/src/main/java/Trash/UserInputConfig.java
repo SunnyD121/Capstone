@@ -1,5 +1,6 @@
-package Core;
+package Trash;
 
+import Core.InputNotifiee;
 import com.jogamp.newt.event.KeyEvent;
 
 import com.jogamp.newt.event.KeyListener;
@@ -11,7 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import static Core.UserInputConfig.Action.*;
+import static Trash.UserInputConfig.Action.*;
 
 public class UserInputConfig implements KeyListener, MouseListener{
 
@@ -99,7 +100,7 @@ public class UserInputConfig implements KeyListener, MouseListener{
                         case turn_left: s.turn_left(); break;
                         case turn_right: s.turn_right(); break;
                         case jump: s.jump(); break;
-                        case switch_mode: s.switch_mode(key-48); break;
+                        case switch_mode: s.switch_mode_normal(); break;
                         case pause: s.pause(); break;
                     }
                 }
@@ -122,7 +123,7 @@ public class UserInputConfig implements KeyListener, MouseListener{
         else {
             for (InputNotifiee s : subscribers) {
                 switch (action) {
-                    case switch_mode: s.switch_mode(key - 48); break;
+                    //case switch_mode: s.switch_mode(key - 48); break;
                     case pause: s.pause(); break;
                 }
             }
@@ -161,8 +162,6 @@ public class UserInputConfig implements KeyListener, MouseListener{
         if (!e.isAutoRepeat() && !isASinglePress.get(keyConfigMap.get(e.getKeyCode())))  //is not a key meant for press and hold
             keysDown.add(e.getKeyCode());
     }
-
-    //DEVNOTES: one list of toggle keys and one list of nontoggles. then map what they represent
 
     @Override
     public void keyReleased(KeyEvent e) {

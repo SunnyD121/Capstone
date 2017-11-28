@@ -15,7 +15,7 @@ public class Camera {
     float aspect;
 
     public Camera(){
-        setViewVolume(45.0f, 1.0f, 1.0f, 10000.0f);   //far is the max render distance!
+        setViewVolume(45.0f, 1.0f, 1.0f, 150.0f);   //far is the max render distance!
         u = new Vector3f();
         v = new Vector3f();
         n = new Vector3f();
@@ -56,8 +56,8 @@ public class Camera {
         farPlane = far;
     }
 
-    public void orient(final Vector3f location, final Vector3f at, final Vector3f up){
-        location.sub(at,n); //makes n face away from the camera (-z dir)
+    public void orient(final Vector3f location, final Vector3f lookAt, final Vector3f up){
+        location.sub(lookAt,n); //makes n face away from the camera (-z dir)
         n.normalize();
         up.cross(n, u);
         u.normalize();

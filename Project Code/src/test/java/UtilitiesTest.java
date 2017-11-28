@@ -1,4 +1,4 @@
-import Core.Utilities;
+import Utilities.Utilities;
 import com.jogamp.opengl.util.GLBuffers;
 import org.junit.BeforeClass;
 import org.junit.Test;

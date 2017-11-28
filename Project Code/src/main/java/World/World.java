@@ -4,6 +4,7 @@ import Core.*;
 import GUI.PauseMenu;
 import Shapes.*;
 import Shapes.Rectangle;
+import Utilities.Utilities;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 
@@ -12,9 +13,11 @@ import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.util.texture.TextureData;
 import com.jogamp.opengl.util.texture.TextureIO;
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import java.awt.*;
 import java.io.FileReader;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -26,6 +29,7 @@ import static Core.GLListener.gl;
 import static World.Emitter.ParticleType.SNOWFLAKE;
 import static World.World.CameraMode.CHASE;
 import static World.World.CameraMode.DEBUG_VIEW;
+import static World.World.CameraMode.SUN_VIEW;
 import static com.jogamp.opengl.GL.*;
 
 /**
@@ -37,6 +41,8 @@ public class World implements InputNotifiee {
     private Player player;
     private Camera cam1, cam2, cam3;
     private float zoom_factor = 1;
+    private final float MAX_ZOOM = 3;
+    private final float MIN_ZOOM = 0.5f;
     protected CameraMode mode = CHASE;   //default is CHASE
     private Vector3f sunlightDirection;
     private ArrayList<Vector3f> treeLocation;
@@ -52,17 +58,15 @@ public class World implements InputNotifiee {
     private ArrayList<Vector3f> stepPyramidPosition;
     private ArrayList<StepPyramid> stepPyramids;
     private int[] textureIDs = new int[4];  //change this value per number of textures being loaded.
-    private Emitter emitter;
-    private BillBoardTriangle bill;
-    private PauseMenu pauseMenu;
+    private Emitter snowEmitter;
 
     protected enum CameraMode{
-        CHASE, DEBUG_VIEW
+        CHASE, DEBUG_VIEW, SUN_VIEW
     }
 
     public World(final String filename){
-        //subscribe to KeyPresses events!
-        UserInputConfig.addKeyPressListener(this);
+        //Set the Context for polling the correct keybinding
+        InputHandler.setContext(this);
 
         //open the json file.
         FileReader fileReader = null;
@@ -195,9 +199,9 @@ public class World implements InputNotifiee {
         for (StepPyramid step : stepPyramids) step.init();
         ground.init();
 
-        emitter = new Emitter(SNOWFLAKE, new Vector3f(0,10,0));
-        bill = new BillBoardTriangle(3.0f);
-        bill.init();
+        //Particles
+        //NOTE: increasing the particleDensity increases severity of storm, but it also introduces lag.
+        snowEmitter = new Emitter(SNOWFLAKE, new Vector3f(0,50,0), 2);
 
         //world has been initialized, now add dynamic things like players
         player.init();
@@ -209,9 +213,10 @@ public class World implements InputNotifiee {
         //Cameras
         cam1 = new Camera();
         cam2 = new Camera();
+        cam2.orient(debuggerStartPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
         cam3 = new Camera();
-        cam3.orient(debuggerStartPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
-
+        Vector3f camera3Pos = new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z).mul(250);
+        cam3.orient(camera3Pos, new Vector3f(0,0,0), new Vector3f(0,1,0));
 
     } //end init()
 
@@ -223,32 +228,28 @@ public class World implements InputNotifiee {
         shader.setUniform("tex", 0);    //TODO: This only needs to be called one in init, but I don't want to pass a shader argument?   //EDIT: Does this need to be called?
         shader.setUniform("ObjectToWorld", new Matrix4f());
 
-        //draw the objects in the World:
+        //draw the objects of the world:
+        drawWorld(shader);
+        //The following will not have a shadow.
         drawGround(shader);
+        drawParticles(shader);
+
+        //finished rendering the world, now render the player
+        //EDIT: moved to drawWorld()
+
+        //poll for user input
+        InputHandler.pollInput();   //there is value in doing this, because this gets called once per frame
+
+    }//end render
+
+    //For Objects that will have shadows.
+    public void drawWorld(Shader shader){
         drawBuildings(shader);
         drawTrees(shader);
         drawLamps(shader);
         drawStepPyramids(shader);
-
-
-        /*Texture calls, for reference.
-        gl.glActiveTexture(GL_TEXTURE0);
-        gl.glBindTexture(GL_TEXTURE_2D, textureID);
-        gl.glBindTexture(GL_TEXTURE_2D, 0); //unbind
-        */
-
-        //TODO: change emitter Material. (maybe in the Emitter or particle class themself?
-        emitter.update(shader, new Matrix4f());
-        //Matrix4f location = new Matrix4f().translate(20,10,0);
-        //bill.render(shader, location, player.getDirection());
-
-        //finished rendering the world, now render the player
         player.render(shader);
-
-        //check for user input
-        UserInputConfig.checkTheInput();  //there is value in doing this, because this gets called once per frame
-
-    }//end render
+    }
 
     private void drawTrees(Shader shader){
         for(int i=0; i < treeLocation.size(); i++)
@@ -369,6 +370,7 @@ public class World implements InputNotifiee {
             drawStepPyramid(shader, stepPyramidPosition.get(i), stepPyramids.get(i));
         }
     }
+
     private void drawStepPyramid(Shader shader, Vector3f position, StepPyramid step){
         Material m = new Material();
         m.Kd = new Vector3f(1,1,0.37f); //beige
@@ -378,6 +380,11 @@ public class World implements InputNotifiee {
         mat.translate(position.x, position.y + step.getBaseRectHeight()/2.0f, position.z);  //center is at the center of the bottommost rectangle.
         shader.setUniform("ObjectToWorld", mat);
         step.render(shader, mat);
+    }
+
+    private void drawParticles(Shader shader){
+        //Material coloring is handled withing emitter.update()
+        //snowEmitter.update(shader, new Matrix4f(), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
     }
 
     private Matrix4f updateCamera(Shader shader){
@@ -407,9 +414,14 @@ public class World implements InputNotifiee {
             shader.setUniform("Projection", cam1.getProjectionMatrix());
         }
         else if(mode == DEBUG_VIEW){
+            worldToEye = cam2.getViewMatrix();
+            shader.setUniform("WorldToEye", worldToEye);
+            shader.setUniform("Projection", cam2.getProjectionMatrix());
+        }
+        else if (mode == SUN_VIEW){
             worldToEye = cam3.getViewMatrix();
             shader.setUniform("WorldToEye", worldToEye);
-            shader.setUniform("Projection", cam3.getProjectionMatrix());
+            shader.setUniform("Projection", cam3.getProjectionMatrix());    //new Matrix4f().ortho(-1000, 1000, -1000, 1000, -1000, 1000) ?
         }
         else {    //Unsupported Camera mode
             System.err.println("Unsupported Camera Mode: "+ mode.toString());
@@ -493,6 +505,8 @@ public class World implements InputNotifiee {
 
     }
 
+    public Vector3f getSunlightDirection() {return new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z);}
+
     //InputNotifiee interface
     final float MOVE_SPEED = 0.5f;
     final float TURN_SPEED = 3.0f;
@@ -500,6 +514,8 @@ public class World implements InputNotifiee {
     @Override
     public void move_forward() {
         if (mode == DEBUG_VIEW)
+            cam2.slide(cam2.getN().negate());
+        else if (mode == SUN_VIEW)
             cam3.slide(cam3.getN().negate());
         else if(mode == CHASE)
             player.move(MOVE_SPEED);
@@ -508,9 +524,31 @@ public class World implements InputNotifiee {
     @Override
     public void move_backward() {
         if (mode == DEBUG_VIEW)
+            cam2.slide(cam2.getN());
+        else if (mode == SUN_VIEW)
             cam3.slide(cam3.getN());
         else if(mode == CHASE)
             player.move(-MOVE_SPEED);
+    }
+
+    @Override
+    public void move_up(){
+        if (mode == DEBUG_VIEW)
+            cam2.slide(cam2.getV());
+        else if (mode == SUN_VIEW)
+            cam3.slide(cam3.getN());
+        else
+            System.out.println("People don't normally float up into the air.");
+    }
+
+    @Override
+    public void move_down(){
+        if (mode == DEBUG_VIEW)
+            cam2.slide(cam2.getV().negate());
+        else if (mode == SUN_VIEW)
+            cam3.slide(cam3.getV().negate());
+        else
+            System.out.println("People don't normally descend into the ground.");
     }
 
     @Override
@@ -526,6 +564,8 @@ public class World implements InputNotifiee {
     @Override
     public void turn_left() {
         if (mode == DEBUG_VIEW)
+            cam2.slide(cam2.getU().negate());
+        else if (mode == SUN_VIEW)
             cam3.slide(cam3.getU().negate());
         else if(mode == CHASE)
             player.turn(TURN_SPEED);
@@ -534,6 +574,8 @@ public class World implements InputNotifiee {
     @Override
     public void turn_right() {
         if (mode == DEBUG_VIEW)
+            cam2.slide(cam2.getU());
+        else if (mode == SUN_VIEW)
             cam3.slide(cam3.getU());
         else if(mode == CHASE)
             player.turn(-TURN_SPEED);
@@ -545,15 +587,14 @@ public class World implements InputNotifiee {
     }
 
     @Override
-    public void switch_mode(int cameraMode){
-        switch (cameraMode){
-            case 1: mode = CHASE; break;
-            case 2: mode = DEBUG_VIEW; break;
-            default: System.err.println("Unrecognized camera mode: " + cameraMode);
-        }
-    }
+    public void switch_mode_normal(){ mode = CHASE; }
 
-    //NOTES: THink about reworking how keys are handled, splitting into toggle keys and other (w,s,a,d)-like keys
+    @Override
+    public void switch_mode_debug(){ mode = DEBUG_VIEW; }
+
+    @Override
+    public void switch_mode_sun(){ mode = SUN_VIEW;}
+
     @Override
     public void pause(){
         //TODO: pause animation?
@@ -564,7 +605,21 @@ public class World implements InputNotifiee {
 
     @Override
     public void zoom(float amount){
-        zoom_factor = amount;
+        zoom_factor += amount;
+        if (zoom_factor > MAX_ZOOM) zoom_factor = MAX_ZOOM;
+        if (zoom_factor < MIN_ZOOM) zoom_factor = MIN_ZOOM;
+    }
+
+    @Override
+    public void move_camera(Vector2f dif){
+        if (mode == DEBUG_VIEW) {
+            cam2.rotate(dif.x, new Vector3f(0, 1, 0));
+            cam2.pitch(dif.negate().y * 0.05f);
+        }
+        else if (mode == SUN_VIEW){
+            cam3.rotate(dif.x, new Vector3f(0, 1, 0));
+            //cam3.pitch(dif.negate().y * 0.05f);
+        }
     }
     //End of InputNotifiee Interface
 }

@@ -1,10 +1,9 @@
 package World.Particles;
 
-//TODO: should have a superclass (interface?) called particle, and have each different particle class describe what kind of particle it is.
-
 import Core.Shader;
 import Core.TriangleMesh;
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 
 public abstract class Particle {
@@ -28,10 +27,8 @@ public abstract class Particle {
     }
 
     public boolean isDead(){
-        if (lifespan <= 0.0)
-            return true;
-        else
-            return false;
+        if (lifespan <= 0.0) return true;
+        else return false;
     }
 
     public void run(Shader shader, Matrix4f ObjectToWorld){

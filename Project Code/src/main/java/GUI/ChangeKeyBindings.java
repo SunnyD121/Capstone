@@ -1,6 +1,6 @@
 package GUI;
 
-import Core.UserInputConfig;
+import Core.InputHandler;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,13 +9,17 @@ import java.awt.event.*;
 
 
 public class ChangeKeyBindings extends JFrame implements KeyListener {
-//TODO: JFrame.addKeyListener
+
     private JFrame frame;
     private JPanel topPanel, centerPanel;
-    private JLabel newLabel;
+    private JLabel newLabel, southLabel;
+    private JButton apply;
     private JComboBox<String> comboBox;
 
     private boolean isListeningForKeyEvents = false;
+    //private boolean hasChanged = false;     //TODO: this seems like duct tape error checking. TO prevent
+    private String currentItemSelected = null;
+    private int newKeyCode;
 
     public ChangeKeyBindings(){
         this.setTitle("Keybindings");
@@ -26,6 +30,7 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
         frame = this;
         topPanel = new JPanel();
         centerPanel = new JPanel();
+        southLabel = new JLabel("");
 
         String[] comboBoxItems = {
                 "Move Forward", "Move Backward", "Move Left" , "Move Right",
@@ -40,6 +45,7 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
         topPanel.add(comboBox);
         this.add(topPanel, BorderLayout.NORTH);
         this.add(centerPanel, BorderLayout.CENTER);
+        this.add(southLabel, BorderLayout.SOUTH);
         this.setVisible(true);
     }
 
@@ -47,13 +53,15 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
         frame.remove(centerPanel);
         frame.revalidate();
         centerPanel = new JPanel();
-        char oldKey = (char)(int)UserInputConfig.lookUpKeyBind(actionName);
+        String oldKey = InputHandler.lookUpKeyBind(actionName);
         JLabel oldLabel = new JLabel("Current KeyBinding: "+oldKey);
         newLabel = new JLabel("New KeyBinding");
         JButton listenForChange = new JButton("Click here to change the binding!");
         listenForChange.addActionListener(new ChangeKey());
-        JButton apply = new JButton("Apply");
+        listenForChange.addKeyListener(this);
+        apply = new JButton("Apply");
         apply.addActionListener(new Apply());
+        apply.setEnabled(false);
         //JButton cancel = new JButton("Cancel");
 
         JPanel left = new JPanel();
@@ -71,25 +79,26 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
         frame.setFocusable(true);
     }
 
+    //KeyListener Interface
     public void keyPressed(KeyEvent e){
-        //if (isListeningForKeyEvents) {
-        System.out.println("A: "+e.getKeyChar());
-        //}
     }
+
     public void keyReleased(KeyEvent e){
-        //if (isListeningForKeyEvents) {
-            System.out.println("B: "+e.getKeyChar());
-        //}
+        if (isListeningForKeyEvents) {
+            newKeyCode = e.getKeyCode();
+            apply.setEnabled(true);
+            southLabel.setText("Keybinding changed to: " + e.getKeyChar());
+        }
     }
-        public void keyTyped(KeyEvent e){
-        //if (isListeningForKeyEvents) {
-            System.out.println("C: "+e.getKeyChar());
-        //}
+
+    public void keyTyped(KeyEvent e){
     }
+    //End KeyListener Interface
 
     private class BoxItemSelect implements ItemListener {
         public void itemStateChanged(ItemEvent e){
             //NOTE: calls this for the deselection and the selection.
+            currentItemSelected = (String)e.getItem();
             updateGui((String)e.getItem());
         }
     }
@@ -97,13 +106,16 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
     private class ChangeKey implements ActionListener{
         public void actionPerformed(ActionEvent e){
             isListeningForKeyEvents = true;
+            southLabel.setText("Waiting for input...");
         }
     }
 
     private class Apply implements ActionListener {
         public void actionPerformed(ActionEvent e){
             isListeningForKeyEvents = false;
-            //TODO: update UserInputConfig
+            InputHandler.changeKeyBinding(currentItemSelected, (short) newKeyCode);  //NOTE: beware the conversion from int to short.
+            apply.setEnabled(false);
+            southLabel.setText("");
         }
     }
 }

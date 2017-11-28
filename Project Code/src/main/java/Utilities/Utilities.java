@@ -1,4 +1,4 @@
-package Core;
+package Utilities;
 
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Matrix4f;
