@@ -15,7 +15,7 @@ public class Camera {
     float aspect;
 
     public Camera(){
-        setViewVolume(45.0f, 1.0f, 1.0f, 150.0f);   //far is the max render distance!
+        setViewVolume(45.0f, 1.0f, 1.0f, 1000.0f);   //far is the max render distance!
         u = new Vector3f();
         v = new Vector3f();
         n = new Vector3f();

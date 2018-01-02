@@ -6,6 +6,7 @@ import org.joml.Matrix4f;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 
 /**
@@ -18,7 +19,16 @@ public class Utilities {
         if (buf.capacity() == 0)
             return "{}";
         String build = "{";
+        String completion = "";
         for(int i=0;i<buf.capacity();i++){
+
+            int temp = (int)((float)i/buf.capacity() * 100);
+            String comp = temp + "%";
+            if (!completion.equals(comp)){
+                System.out.println(comp);
+                completion = comp;
+            }
+
             build += buf.get(i);
             build += ", ";
         }

@@ -17,6 +17,8 @@ import org.joml.Vector3f;
 
 //import static com.jogamp.opengl.GL.*;
 
+import javax.imageio.ImageIO;
+
 import static com.jogamp.opengl.GL.*;
 import static com.jogamp.opengl.GL2ES2.GL_DEPTH_COMPONENT;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;
@@ -25,6 +27,10 @@ import static com.jogamp.opengl.GL2ES3.GL_MAJOR_VERSION;
 import static com.jogamp.opengl.GL2ES3.GL_MINOR_VERSION;
 
 
+import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
+import java.io.File;
+import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -42,6 +48,7 @@ public class GLListener implements GLEventListener {
 
     private long currentTime;
     private final int SHADOWFRAME = 1;
+    private int shadowTex;
     private final int SHADOWMAP_HEIGHT = 512;
     private final int SHADOWMAP_WIDTH = 512;
     private int shadowPassID, renderPassID;
@@ -82,18 +89,17 @@ public class GLListener implements GLEventListener {
         //Setup a texture to store the Shadow Map
         setupShadowTexture();
 
-        //Use that texture, in channel 1
-        gl.glActiveTexture(gl.GL_TEXTURE1);
-        gl.glBindTexture(gl.GL_TEXTURE_2D, 1);  //Hardcode, but there is only one texture and that's the depth map
+        //Use that texture, in channel 0
+        gl.glActiveTexture(GL_TEXTURE0);
+        gl.glBindTexture(GL_TEXTURE_2D, shadowTex);
 
         //FrameBuffer stuff
         int frameBufferCount = 1;   //total number of framebuffers, not counting the default one the scene renders to.
         IntBuffer frameBufferObject = GLBuffers.newDirectIntBuffer(new int[frameBufferCount]);  //Intbuffer storing the framebuffer id's
         gl.glGenFramebuffers(frameBufferCount, frameBufferObject);  //arg1: number of FrameBuffers to create, arg2: data structure storing pointers
         //NOTE: 0 is the default framebuffer, the one the scene gets rendered to.
-        //TODO: finals for each framebuffer. i.e. final int SHADOWS = 1
-        gl.glBindFramebuffer(GL_FRAMEBUFFER, SHADOWFRAME);
-        gl.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, 1, 0);   //'1' hardcode, the buffer index of the shadow texture
+        gl.glBindFramebuffer(GL_FRAMEBUFFER, SHADOWFRAME);  //SHADOWFRAME = 1
+        gl.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowTex, 0);
 
         /*  Ask Wolff about these lines:
         GLenum drawBuffers[] = {GL_NONE}
@@ -109,14 +115,6 @@ public class GLListener implements GLEventListener {
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0);
         /* End Shadow Map */
 
-        //add a depth attachment - done
-        //texture: 1 channel (r instead of rgba)
-        //glGenTextures() - done
-        //parameter stuff - done
-        //glTexImage2D(Depth, null data)
-        //attach to framebuffer //glFrameBufferTexture2D, glDepthAttachment
-        //sampler2DShadow
-
         //Subroutine ID's
         shadowPassID = gl.glGetSubroutineIndex(shader.getProgramID(), GL_FRAGMENT_SHADER, "createShadows");
         renderPassID = gl.glGetSubroutineIndex(shader.getProgramID(), GL_FRAGMENT_SHADER, "renderScene");
@@ -127,18 +125,17 @@ public class GLListener implements GLEventListener {
 
         //More shadow stuff
         shadowCamera = new Camera();
-        shadowCamera.orient(world.getSunlightDirection().mul(250), new Vector3f(0), new Vector3f(0,1,0));
+        shadowCamera.orient(world.getSunlightDirection().mul(160), new Vector3f(0), new Vector3f(0,1,0));
         Matrix4f shadowBias = new Matrix4f(     //TODO: This might need to be transposed?
                 0.5f,0.0f,0.0f,0.0f,
                 0.0f,0.5f,0.0f,0.0f,
                 0.0f,0.0f,0.5f,0.0f,
                 0.5f,0.5f,0.5f,1.0f);
         Matrix4f lightCoord = new Matrix4f();
-        Matrix4f temp = new Matrix4f();
-        shadowCamera.getProjectionMatrix().mul(shadowCamera.getViewMatrix(), temp);
-        shadowBias.mul(temp, lightCoord);
-        shader.setUniform("ShadowMatrix", lightCoord);
+        shadowBias.mul(shadowCamera.getProjectionMatrix(), lightCoord);
+        lightCoord.mul(shadowCamera.getViewMatrix());
 
+        shader.setUniform("ShadowMatrix", lightCoord);
         shader.setUniform("ShadowMap", 0);  //sampler2D
 
         //initial framerate won't be completely accurate, but subsequent updates should be.
@@ -168,19 +165,12 @@ public class GLListener implements GLEventListener {
         world.drawWorld(shader);    //separation of shadowed Objects and nonShadowed. drawWorld() vs render().
         gl.glCullFace(GL_BACK);
         gl.glFlush();
-        //seeShadowMapImage();
+        //seeShadowMapImage(); System.exit(0);  //uncomment this only if you want to see the ShadowMap.
     }
 
-    int count = 0;
     @Override
     public void display(GLAutoDrawable drawable) {
-        long temp = System.currentTimeMillis();
-        long displayLatency = temp - currentTime;
-        currentTime = temp;
-        float framerate = 1 / ((float)displayLatency/1000.0f);
-        if (count % 100 == 5)
-            System.out.printf("Display calls/Second: %.1f\n", framerate);
-        count++;
+        computeCodeExecutionSpeed();
 
         //render calls
         generateShadows();
@@ -228,46 +218,52 @@ public class GLListener implements GLEventListener {
         System.out.printf("==========================================================\n");
     }
 
-    private void setupShadowTexture(){
-        int shadowMapHeight = 512;
-        int shadowMapWidth = 512;
-        float[] border = {1.0f, 0.0f, 0.0f, 0.0f};
-
-        gl.glActiveTexture(GL_TEXTURE1);
-        IntBuffer textureBuffer = GLBuffers.newDirectIntBuffer(new int[1]); //buffer holding pointers to textures
-        gl.glGenTextures(1, textureBuffer);     //associates list of textures with this buffer
-        gl.glBindTexture(gl.GL_TEXTURE_2D, 1);  //currently using texture 1
-        gl.glTexStorage2D(gl.GL_TEXTURE_2D,1, gl.GL_DEPTH_COMPONENT24, shadowMapWidth, shadowMapHeight);    //parameters for the depth texture
-        //Texture modifications, //TODO: learn about the ones you don't know about.
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_BORDER);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_BORDER);
-        gl.glTexParameterfv(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_BORDER_COLOR, FloatBuffer.wrap(border));
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_COMPARE_MODE, gl.GL_COMPARE_REF_TO_TEXTURE);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_COMPARE_FUNC, gl.GL_LESS);
-
-        //unbind
-        gl.glBindTexture(gl.GL_TEXTURE_2D, 0);
+    int count = 0;
+    private void computeCodeExecutionSpeed(){
+        long temp = System.currentTimeMillis();
+        long displayLatency = temp - currentTime;
+        currentTime = temp;
+        float framerate = 1 / ((float)displayLatency/1000.0f);
+        if (count % 100 == 5)
+            System.out.printf("Display calls/Second: %.1f\n", framerate);
+        count++;
     }
 
-    private float[] seeShadowMapImage(){
+    private void setupShadowTexture(){
+        float[] border = {1.0f, 0.0f, 0.0f, 0.0f};
+
+        gl.glActiveTexture(GL_TEXTURE0);
+        IntBuffer textureBuffer = GLBuffers.newDirectIntBuffer(new int[1]); //buffer holding pointers to textures
+        gl.glGenTextures(1, textureBuffer);     //associates list of textures with this buffer
+        shadowTex = textureBuffer.get(0);
+        gl.glBindTexture(GL_TEXTURE_2D, shadowTex);
+        gl.glTexStorage2D(GL_TEXTURE_2D,1, gl.GL_DEPTH_COMPONENT24, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);    //parameters for the depth texture
+        //Texture modifications, //TODO: learn about the ones you don't know about.
+        gl.glTexParameteri(GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST);
+        gl.glTexParameteri(GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST);
+        gl.glTexParameteri(GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_BORDER);
+        gl.glTexParameteri(GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_BORDER);
+        gl.glTexParameterfv(GL_TEXTURE_2D, gl.GL_TEXTURE_BORDER_COLOR, FloatBuffer.wrap(border));
+        gl.glTexParameteri(GL_TEXTURE_2D, gl.GL_TEXTURE_COMPARE_MODE, gl.GL_COMPARE_REF_TO_TEXTURE);
+        gl.glTexParameteri(GL_TEXTURE_2D, gl.GL_TEXTURE_COMPARE_FUNC, gl.GL_LESS);
+
+        //unbind
+        gl.glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    private void seeShadowMapImage(){
         int size = SHADOWMAP_WIDTH * SHADOWMAP_HEIGHT;
         FloatBuffer buffer = GLBuffers.newDirectFloatBuffer(new float[size]);
+        gl.glBindTexture(GL_TEXTURE_2D, shadowTex);
         gl.glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, buffer);
-        int errorCode = gl.glGetError();
-        if (errorCode != GL_NO_ERROR) {
-            System.out.println(errorCode);
-            System.exit(-1);
-        }
-
         float[] depthValues = new float[size];
+        float min = 1.0f;
         for (int i = 0; i < buffer.capacity(); i++){
             depthValues[i] = buffer.get(i);
-            //System.out.println(buffer.get(i));
+            if (depthValues[i] < min) min = depthValues[i];
         }
-        Utilities.fBufToString(buffer);
-        //float[] depthValues = buffer.array();
+        //System.out.println(Utilities.fBufToString(buffer));
+        //float[] depthValues = buffer.array(); //sad this doesn't work.
         float[] pixels = new float[size * 4];
 
         for(int i = 0; i < SHADOWMAP_HEIGHT; i++){
@@ -275,25 +271,29 @@ public class GLListener implements GLEventListener {
                 int imageIndex = 4 * (i * SHADOWMAP_WIDTH + j);
                 int depthBufferIndex = (SHADOWMAP_HEIGHT - i - 1) * SHADOWMAP_WIDTH + j;
 
-                float minLightVal = 0.88f;
+                float minLightVal = min;
                 float scaleBy = (depthValues[depthBufferIndex] - minLightVal) / (1.0f - minLightVal);
-                float pixelValue = scaleBy * 255;
+                float pixelValue = (1.0f - scaleBy) * 255;
 
-                pixels[imageIndex] = pixelValue;
-                pixels[imageIndex + 1] = pixelValue;
-                pixels[imageIndex + 2] = pixelValue;
-                pixels[imageIndex + 3] = 1.0f;
+                pixels[imageIndex] = pixelValue;  //R
+                pixels[imageIndex+1] = pixelValue;  //G
+                pixels[imageIndex+2] = pixelValue;  //B
+                pixels[imageIndex+3] = 255f;  //A
             }
         }
-        gl.glActiveTexture(GL_TEXTURE1);
-        gl.glGenTextures(1, IntBuffer.wrap(new int[1]));
-        gl.glBindTexture(GL_TEXTURE_2D, 1);
-        gl.glTexImage2D(GL_TEXTURE_2D, 1,GL_RGBA, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT, 0, GL_RGBA, GL_FLOAT, FloatBuffer.wrap(pixels));
-        //gl.glTexStorage2D(GL_TEXTURE_2D, 1, gl.GL_RGBA, SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);
-        gl.glBindTexture(GL_TEXTURE_2D, 0);     //unbind
-        return pixels;
+        createPicture(pixels);
 
     }
 
+    private void createPicture(float[] data){
+        BufferedImage b = new BufferedImage(SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT, BufferedImage.TYPE_INT_ARGB);    //Despite this, the pixels are still read in RGBA.
+        WritableRaster r = b.getRaster();
+        r.setPixels(0,0,SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT, data);
+        File f = new File("ShadowMapVisualization.png");
+        try{ImageIO.write(b, "png", f);}
+        catch (IOException e){e.printStackTrace();}
+        System.out.println("Picture Creation Successful.");
+
+    }
 
 }

@@ -44,8 +44,9 @@ subroutine uniform renderPassType renderPass;
 
 subroutine (renderPassType) void renderScene(){
     bool debug = false;
-    if (!gl_FrontFacing)
-        discard;    //culls fragments that are being viewed from places players aren't meant to be.
+    //if (!gl_FrontFacing)
+        //discard;    //culls fragments that are being viewed from places players aren't meant to be.
+        //EDIT: the above is handled in GLListener.java
     vec3 color = vec3(0.0, 0.0, 0.0);
     vec4 texColor = texture(tex, texCoords);
     vec3 diffuse = Kd + texColor.xyz;   //NOTE: assuming the alpha is 1.0, will tack it back on later.
@@ -54,7 +55,7 @@ subroutine (renderPassType) void renderScene(){
 
     float shadow = 1.0;
         if( shadowCoord.z >= 0 ) {
-            shadow = textureProj(shadowMap, shadowCoord);
+            shadow = textureProj(shadowMap, shadowCoord);   //TODO: This returns 0.0f.
         }
 
     for(int i = 0; i < 12; i++){    //for each of the 12 (lamp) light sources:
@@ -72,7 +73,7 @@ subroutine (renderPassType) void renderScene(){
 
     //light equation, sun
     color += sunIntensity * (diffuse * max(dot(n,l),0.0) + Ks * pow(max(dot(h,n),0.0), shine));
-    //color = color * shadow;   //TODO: fix this when ready
+    color *= shadow;   //TODO: fix this when ready
     color += ambientIntensity * Ka;
     color += emission;
 

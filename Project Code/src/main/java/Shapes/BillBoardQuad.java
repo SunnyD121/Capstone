@@ -52,6 +52,7 @@ public class BillBoardQuad extends TriangleMesh{
         throw new IllegalArgumentException("Don't call BillBoardQuad.render(), try the other one.");
     }
 
+    @Override
     public void render(Shader shader, Vector3f billPosition, Vector3f cameraPosition){
         Vector3f look = new Vector3f();
         billPosition.sub(cameraPosition, look);     //temporary look vector

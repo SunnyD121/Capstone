@@ -201,7 +201,7 @@ public class World implements InputNotifiee {
 
         //Particles
         //NOTE: increasing the particleDensity increases severity of storm, but it also introduces lag.
-        snowEmitter = new Emitter(SNOWFLAKE, new Vector3f(0,50,0), 2);
+        snowEmitter = new Emitter(SNOWFLAKE, new Vector3f(0,50,0), 30);
 
         //world has been initialized, now add dynamic things like players
         player.init();
@@ -215,7 +215,7 @@ public class World implements InputNotifiee {
         cam2 = new Camera();
         cam2.orient(debuggerStartPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
         cam3 = new Camera();
-        Vector3f camera3Pos = new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z).mul(250);
+        Vector3f camera3Pos = new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z).mul(160);
         cam3.orient(camera3Pos, new Vector3f(0,0,0), new Vector3f(0,1,0));
 
     } //end init()
