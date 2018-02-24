@@ -3,11 +3,12 @@ package World.Particles;
 import Core.Shader;
 import Core.TriangleMesh;
 import org.joml.Matrix4f;
-import org.joml.Vector2f;
+import Utilities.Utilities;
 import org.joml.Vector3f;
 
 public abstract class Particle {
     protected Vector3f location;
+    protected Vector3f direction;
     protected Vector3f velocity;
     protected Vector3f acceleration;
     protected float lifespan;
@@ -20,9 +21,9 @@ public abstract class Particle {
         lifespan -= 1;
     }
 
-    public void render(Shader shader, Matrix4f O2W){
-        O2W.translate(location);
-        shader.setUniform("ObjectToWorld", O2W);
+    public void render(Shader shader){
+        Matrix4f mat = Utilities.setLocationAndDirectionManually(location, direction);
+        shader.setUniform("ObjectToWorld", mat);    //move particle from shapeview to location
         particleShape.render();
     }
 
@@ -31,17 +32,17 @@ public abstract class Particle {
         else return false;
     }
 
-    public void run(Shader shader, Matrix4f ObjectToWorld){
+    public void run(Shader shader){
         update();
-        render(shader, ObjectToWorld);
+        render(shader);
     }
     public Vector3f getVelocity(){
-        return velocity;
+        return new Vector3f(velocity);
     }
     public Vector3f getAcceleration(){
-        return acceleration;
+        return new Vector3f(acceleration);
     }
     public Vector3f getLocation(){
-        return location;
+        return new Vector3f(location);
     }
 }

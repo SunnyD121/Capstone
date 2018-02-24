@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import static Core.GLListener.gl;
+import static World.Emitter.ParticleType.LASER;
 import static World.Emitter.ParticleType.SNOWFLAKE;
 import static World.World.CameraMode.CHASE;
 import static World.World.CameraMode.DEBUG_VIEW;
@@ -58,7 +59,7 @@ public class World implements InputNotifiee {
     private ArrayList<Vector3f> stepPyramidPosition;
     private ArrayList<StepPyramid> stepPyramids;
     private int[] textureIDs = new int[4];  //change this value per number of textures being loaded.
-    private Emitter snowEmitter;
+    private Emitter snowEmitter, laserEmitter;
 
     protected enum CameraMode{
         CHASE, DEBUG_VIEW, SUN_VIEW
@@ -190,6 +191,9 @@ public class World implements InputNotifiee {
         //Textures
         initTextures();
 
+        //Test Objects
+
+
         //init calls
         for (Building b : city) b.init();
         for (Cylinder cyl : forestTrunks) cyl.init();
@@ -201,7 +205,8 @@ public class World implements InputNotifiee {
 
         //Particles
         //NOTE: increasing the particleDensity increases severity of storm, but it also introduces lag.
-        snowEmitter = new Emitter(SNOWFLAKE, new Vector3f(0,50,0), 30);
+        //snowEmitter = new Emitter(SNOWFLAKE, new Vector3f(0,50,0), 30);
+        laserEmitter = new Emitter(LASER, new Vector3f(0,4,0), new Vector3f(0), 1);
 
         //world has been initialized, now add dynamic things like players
         player.init();
@@ -217,16 +222,21 @@ public class World implements InputNotifiee {
         cam3 = new Camera();
         Vector3f camera3Pos = new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z).mul(160);
         cam3.orient(camera3Pos, new Vector3f(0,0,0), new Vector3f(0,1,0));
+        //cam3.setViewVolume(50.0f,1.0f,1.0f,250.0f); //not needed, values are set in other statements
 
     } //end init()
 
     boolean isPaused = false;
+    float twist = 0;
     public void render(Shader shader){
         Matrix4f worldToEye = updateCamera(shader);
         updateLight(shader, worldToEye);
 
         shader.setUniform("tex", 0);    //TODO: This only needs to be called one in init, but I don't want to pass a shader argument?   //EDIT: Does this need to be called?
         shader.setUniform("ObjectToWorld", new Matrix4f());
+
+        //Render Test Objects:
+
 
         //draw the objects of the world:
         drawWorld(shader);
@@ -236,6 +246,9 @@ public class World implements InputNotifiee {
 
         //finished rendering the world, now render the player
         //EDIT: moved to drawWorld()
+
+        //check if player is out-of-bounds
+        if (player.getPosition().y < -3) killPlayer();
 
         //poll for user input
         InputHandler.pollInput();   //there is value in doing this, because this gets called once per frame
@@ -272,6 +285,7 @@ public class World implements InputNotifiee {
         Material m = new Material();
         //draw the tree trunk
         m.Kd = new Vector3f(0.38f,0.2f,0.07f);  //brown
+        m.Ka = m.Kd;
         m.setUniforms(shader);
 
         Matrix4f temp = new Matrix4f();
@@ -284,6 +298,7 @@ public class World implements InputNotifiee {
 
         m = new Material();
         m.Kd = new Vector3f(0.1f, 0.6f, 0.1f);  //green
+        m.Ka = m.Kd;
         m.setUniforms(shader);
 
         forCones.translate(0, top.getHeight()/2.0f + trunk.getHeight() - 1,0);     //Cone origin is at (0,halfheight,0) //no clue the -1.
@@ -313,6 +328,7 @@ public class World implements InputNotifiee {
         Material m = new Material();
         //draw the lamp post
         m.Kd = new Vector3f(0.0f);      //black
+        m.Ka = m.Kd;
         m.setUniforms(shader);
 
         Matrix4f temp = new Matrix4f();
@@ -322,8 +338,8 @@ public class World implements InputNotifiee {
         post.render();
 
         //draw the lamp bulb
-        m.Ka = new Vector3f(1.0f);
-        m.Kd = new Vector3f(1.0f);
+        m.Ka = new Vector3f(100.0f);
+        m.Kd = new Vector3f(100.0f);
         m.Ks = new Vector3f(1.0f);
         m.Le = new Vector3f(1.0f);
         m.shine = 1.0f;
@@ -338,6 +354,7 @@ public class World implements InputNotifiee {
         Material m = new Material();
         //m.Kd = new Vector3f(0.5f, 0.5f, 0.2f);      //Yellow
         m.Kd = new Vector3f(0);
+        m.Ka = m.Kd;
         m.setUniforms(shader);
 
         gl.glActiveTexture(GL_TEXTURE0);
@@ -353,8 +370,8 @@ public class World implements InputNotifiee {
         shader.setUniform("ObjectToWorld", new Matrix4f());
 
         Material m = new Material();
-        //m.Kd = new Vector3f(0,1,0);     //green
-        m.Kd = new Vector3f(0,0.1f,0);
+        m.Kd = new Vector3f(0,0.1f,0);      //dark green, for shading the texture more accurately
+        m.Ka = m.Kd;
         m.setUniforms(shader);
 
         gl.glActiveTexture(GL_TEXTURE0);
@@ -374,6 +391,7 @@ public class World implements InputNotifiee {
     private void drawStepPyramid(Shader shader, Vector3f position, StepPyramid step){
         Material m = new Material();
         m.Kd = new Vector3f(1,1,0.37f); //beige
+        m.Ka = m.Kd;
         m.setUniforms(shader);
 
         Matrix4f mat = new Matrix4f();
@@ -381,16 +399,23 @@ public class World implements InputNotifiee {
         shader.setUniform("ObjectToWorld", mat);
         step.render(shader, mat);
     }
-
     private void drawParticles(Shader shader){
         //Material coloring is handled withing emitter.update()
-        //snowEmitter.update(shader, new Matrix4f(), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
+        //snowEmitter.run(shader, new Matrix4f(), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
+        laserEmitter.setDirection(player.getDirection());
+        shader.setUniform("laserIntensity", new Vector3f(0,0,25));
+        //for (int i=0;i<10;i++)shader.setUniform("laserPositions["+i+"]", player.getPosition());
+
+
+
+        laserEmitter.update(shader, player.getPosition().add(new Vector3f(0,2.5f,0), new Vector3f()), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
+
     }
 
     private Matrix4f updateCamera(Shader shader){
         //temporary allocations for use below.
         Matrix4f worldToEye = new Matrix4f();
-        Vector3f g = new Vector3f();    //placeholder/garbage; prevents data overwrite. because @*$% joml. //TODO: remove this expletive.
+        Vector3f g = new Vector3f();    //placeholder/garbage, prevents data overwrite.
         Vector3f arg1 = new Vector3f(); //placeholder for argument 1 to other functions.
         Vector3f arg2 = new Vector3f(); //placeholder for argument 2 to other functions.
 
@@ -435,12 +460,12 @@ public class World implements InputNotifiee {
 
         //draw the lamp's light
         shader.setUniform("lampIntensity", new Vector3f(18.0f));
-        shader.setUniform("ambientIntensity", new Vector3f(1.0f));  //formerly 0.0f
+        shader.setUniform("ambientIntensity", new Vector3f(0.05f));  //formerly 0.0f
 
         for (int i = 0; i < lampData.size(); i++) {
             Vector4f lampPosition = new Vector4f(lampData.get(i).x, lampData.get(i).y, lampData.get(i).z, 1.0f);
             float lampHeight = lampData.get(i).w;
-            lampPosition.mul(worldToEye);    //originally worldToEye * lampPosition
+            //lampPosition.mul(worldToEye);    //originally worldToEye * lampPosition
             shader.setUniform("lights["+i+"]",new Vector3f(lampPosition.x, lampPosition.y + lampHeight, lampPosition.z));
         }
 
@@ -507,6 +532,11 @@ public class World implements InputNotifiee {
 
     public Vector3f getSunlightDirection() {return new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z);}
 
+    public void killPlayer(){
+        System.out.println("Checkpoint!");
+        player.setPosition(initialPlayerPosition);
+    }
+
     //InputNotifiee interface
     final float MOVE_SPEED = 0.5f;
     final float TURN_SPEED = 3.0f;
@@ -548,6 +578,7 @@ public class World implements InputNotifiee {
         else if (mode == SUN_VIEW)
             cam3.slide(cam3.getV().negate());
         else
+            player.moveY(-0.3f);
             System.out.println("People don't normally descend into the ground.");
     }
 
@@ -584,6 +615,18 @@ public class World implements InputNotifiee {
     @Override
     public void jump() {
         System.err.println("Jumping is not implemented yet.");
+    }
+
+
+    long timeCheck = 0;
+    @Override
+    public void shoot(){
+        long timeNow = System.currentTimeMillis();
+        if (timeNow > timeCheck + 500) {     //if 500ms have passed since last laser was fired...
+            laserEmitter.addParticle();
+            timeCheck = timeNow;
+        }
+
     }
 
     @Override

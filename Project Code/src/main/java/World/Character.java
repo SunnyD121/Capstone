@@ -18,7 +18,7 @@ public abstract class Character {
     public abstract void render(Shader shader);
 
     public Vector3f getPosition(){
-        return position;
+        return new Vector3f(position);
     }
 
     public void setPosition(Vector3f pos){
@@ -26,7 +26,7 @@ public abstract class Character {
     }
 
     public Vector3f getDirection(){
-        return direction;
+        return new Vector3f(direction);
     }
 
     public void setDirection(Vector3f dir){
@@ -45,4 +45,5 @@ public abstract class Character {
     public void turn(float angle){
         direction.rotateY((float)Math.toRadians(angle), direction);
     }
+
 }

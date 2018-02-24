@@ -105,14 +105,14 @@ public class GLListener implements GLEventListener {
         GLenum drawBuffers[] = {GL_NONE}
         glDrawBuffers(1, drawBuffers);
          */
-        int successfulSetup = gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER);
-        if (successfulSetup == gl.GL_FRAMEBUFFER_COMPLETE)
+        int successfulSetup = gl.glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (successfulSetup == GL_FRAMEBUFFER_COMPLETE)
             System.out.println("Shadow map framebuffer successfully loaded.");
         else
             System.err.println("Shadow map frambuffer encountered errors.");
 
         //unbind shadow framebuffer, so we see the scene.
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0);
+        gl.glBindFramebuffer(GL_FRAMEBUFFER, 0);
         /* End Shadow Map */
 
         //Subroutine ID's
@@ -126,6 +126,7 @@ public class GLListener implements GLEventListener {
         //More shadow stuff
         shadowCamera = new Camera();
         shadowCamera.orient(world.getSunlightDirection().mul(160), new Vector3f(0), new Vector3f(0,1,0));
+        shadowCamera.setViewVolume(50.0f,1.0f,1.0f,25.0f);
         Matrix4f shadowBias = new Matrix4f(     //TODO: This might need to be transposed?
                 0.5f,0.0f,0.0f,0.0f,
                 0.0f,0.5f,0.0f,0.0f,
@@ -170,7 +171,7 @@ public class GLListener implements GLEventListener {
 
     @Override
     public void display(GLAutoDrawable drawable) {
-        computeCodeExecutionSpeed();
+        //computeCodeExecutionSpeed();
 
         //render calls
         generateShadows();

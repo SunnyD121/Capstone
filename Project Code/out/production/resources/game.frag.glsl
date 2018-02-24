@@ -8,6 +8,9 @@
 //uniform vec4 color = vec4(1,0,0,1);
 uniform vec3 lights[12];    //the light of the lamps' positions.
 uniform vec3 lampIntensity;
+uniform vec3 laserPositions[10];  //position of laser's light, max 10 lasers before auto-death
+uniform int numLiveLasers;      //the amount of lasers that are actually alive
+uniform vec3 laserIntensity;
 uniform vec3 Kd;  // Diffuse reflectivity
 uniform vec3 Ks;
 uniform vec3 Ka;
@@ -23,6 +26,7 @@ in vec3 normal;
 in vec3 eyePos;
 in vec2 texCoords;
 in vec4 shadowCoord;
+in mat4 WorldToEyeMatrix;
 
 out vec4 fragColor;
 
@@ -39,6 +43,26 @@ vec3 highDynamicRange(vec3 color){
     return vec3(color.x/max, color.y/max, color.z/max);
 }
 
+vec3 convertLightLocation(vec3 loc){        //takes the World Location and converts it to the Eye Location
+    vec4 temp = vec4(loc, 1.0f);
+    temp = WorldToEyeMatrix * temp;
+    return temp.xyz;
+}
+
+vec3 lightEquation1(vec3 intensity, vec3 diffuseComponent, float d, vec3 n, vec3 l, vec3 h){
+    vec3 light = (1.0/(d*d)) * intensity * (diffuseComponent * max(dot(n,l), 0.0) + Ks * pow(max(dot(h,n),0.0), shine));
+
+    //High Dynamic Range adjustment
+        light = highDynamicRange(light);    //retains integrity of the original color (no whitewashing)
+
+    return light;
+}
+
+vec3 lightEquation2(vec3 intensity, float d){
+    vec3 light = (1.0/(d*d)) * intensity;
+    return light;
+}
+
 subroutine void renderPassType();
 subroutine uniform renderPassType renderPass;
 
@@ -48,37 +72,51 @@ subroutine (renderPassType) void renderScene(){
         //discard;    //culls fragments that are being viewed from places players aren't meant to be.
         //EDIT: the above is handled in GLListener.java
     vec3 color = vec3(0.0, 0.0, 0.0);
-    vec4 texColor = texture(tex, texCoords);
-    vec3 diffuse = Kd + texColor.xyz;   //NOTE: assuming the alpha is 1.0, will tack it back on later.
+    vec3 texColor = texture(tex, texCoords).xyz; //NOTE: assuming the alpha is 1.0, will tack it back on later.
+    vec3 diffuseComponent = Kd + texColor;
+    vec3 ambientComponent = Ka + texColor;
+    //vec3 color = diffuseComponent;
     vec3 v = normalize(-eyePos);
     vec3 n = normalize(normal);
 
     float shadow = 1.0;
         if( shadowCoord.z >= 0 ) {
-            shadow = textureProj(shadowMap, shadowCoord);   //TODO: This returns 0.0f.
+            shadow = textureProj(shadowMap, shadowCoord);   //TODO: This returns 0.0f. true/false maybe?
         }
 
+    //sun
+    vec3 l = normalize(sunDirection);
+    vec3 h = normalize(l + v);
+    //light equation, sun
+    color += sunIntensity * (diffuseComponent * max(dot(n,l),0.0) + Ks * pow(max(dot(h,n),0.0), shine));
+    //if fragment is in shadow, only use ambient light (shadow = 0)
+    color *= shadow;   //TODO: fix this when ready
+    color += ambientIntensity * ambientComponent;
+    color += emission;
+
+    //lamps
     for(int i = 0; i < 12; i++){    //for each of the 12 (lamp) light sources:
-        float d = length(lights[i] - eyePos);   //distance of light source from fragment in Camera/Eye space
-        vec3 l = normalize(lights[i] - eyePos); //direction of that distance
+        vec3 lightPos = convertLightLocation(lights[i]);
+        float d = length(lightPos - eyePos);   //distance of light source from fragment in Camera/Eye space
+        vec3 l = normalize(lightPos - eyePos); //direction of that distance
         vec3 h = normalize(l + v);      //TODO: figure out what this is. Guess: direction of light source to Camera location
 
         //light equation, lamps
-        color += (1.0/(d*d)) * lampIntensity * (diffuse * max(dot(n,l), 0.0) + Ks * pow(max(dot(h,n),0.0), shine));
+        color += lightEquation1(lampIntensity, diffuseComponent, d, n, l, h);
 
     }
-    //for the sun:
-    vec3 l = normalize(sunDirection);
-    vec3 h = normalize(l + v);
 
-    //light equation, sun
-    color += sunIntensity * (diffuse * max(dot(n,l),0.0) + Ks * pow(max(dot(h,n),0.0), shine));
-    color *= shadow;   //TODO: fix this when ready
-    color += ambientIntensity * Ka;
-    color += emission;
+    //lasers
+    for (int i=0; i < numLiveLasers; i++){
+        vec3 lightPos = convertLightLocation(laserPositions[i]);
 
-    //High Dynamic Range adjustment
-    color = highDynamicRange(color);
+        float d = length(lightPos - eyePos);
+        vec3 l = normalize(lightPos - eyePos);
+        vec3 h = normalize(l + v);
+
+        color += lightEquation2(laserIntensity, d);
+    }
+
 
     fragColor = vec4(color, 1.0);
 }

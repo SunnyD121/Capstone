@@ -2,6 +2,7 @@ package Utilities;
 
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -110,4 +111,33 @@ public class Utilities {
         build += "}";
         return build;
     }
+
+    public static Matrix4f changeDirection(Vector3f direction){
+        float directionAngle = (float)Math.acos(direction.normalize().dot(new Vector3f(0,0,1).normalize()));
+        if (direction.x < 0) directionAngle *= -1.0f;
+        return new Matrix4f().rotate(directionAngle, new Vector3f(0,1,0));
+    }
+
+    public static Matrix4f setLocationAndDirectionManually(Vector3f location, Vector3f direction){
+        Matrix4f m = new Matrix4f();
+        float lx = location.x;
+        float ly = location.y;
+        float lz = location.z;
+
+        m.m30(lx);
+        m.m31(ly);
+        m.m32(lz);
+
+        float dx = direction.x;
+        float dy = direction.y;
+        float dz = direction.z;
+
+        m.m00(dz);
+        m.m02(-dx);
+        m.m20(dx);
+        m.m22(dz);
+
+        return m;
+    }
+
 }

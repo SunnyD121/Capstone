@@ -23,7 +23,7 @@ public class Camera {
 
     public Matrix4f getProjectionMatrix(){
         Matrix4f m = new Matrix4f();
-        m.perspective(fovy, aspect, nearPlane, farPlane);
+        m.perspective((float)Math.toRadians(fovy), aspect, nearPlane, farPlane);
         return m;
     }
 

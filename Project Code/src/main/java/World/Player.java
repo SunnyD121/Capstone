@@ -39,12 +39,12 @@ public class Player extends Character{
     @Override
     public void render(Shader shader){
 
-
+        /*
         float directionAngle = (float)Math.acos(direction.normalize().dot(new Vector3f(0,0,1).normalize()));
         if (direction.x < 0)
             directionAngle *= -1.0f;
-
-        Matrix4f m = new Matrix4f().translate(position).mul(new Matrix4f().rotate(directionAngle, new Vector3f(0,1,0)));
+        */
+        Matrix4f m = new Matrix4f().translate(position).mul(Utilities.Utilities.changeDirection(direction));
         m.translate(0,height/2.0f - 0.25f,0);   //second arg to move the player onto the ground, instead of through it.
         //set shaders
         shader.setUniform("ObjectToWorld", m);

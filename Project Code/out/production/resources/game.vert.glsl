@@ -15,6 +15,7 @@ out vec3 normal;
 out vec3 eyePos;    //the position of the surface in eye coordinates
 out vec2 texCoords;
 out vec4 shadowCoord;
+out mat4 WorldToEyeMatrix;
 
 void main() {
     mat4 toEye = WorldToEye * ObjectToWorld;
@@ -33,4 +34,6 @@ void main() {
     shadowCoord = (ShadowMatrix * ObjectToWorld) * vPosition;
 
     gl_Position = Projection * toEye * vPosition;
+
+    WorldToEyeMatrix = WorldToEye;
 }

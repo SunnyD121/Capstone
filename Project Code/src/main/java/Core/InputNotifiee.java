@@ -18,9 +18,12 @@ public interface InputNotifiee {
     void switch_mode_debug();
     void switch_mode_sun();
     void pause();
+    void shoot();
 
     //Mouse
     void zoom(float amount);
     void move_camera(Vector2f dif);
 
 }
+
+

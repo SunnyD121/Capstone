@@ -55,6 +55,7 @@ public class InputHandler implements KeyListener, MouseListener {
         keyMap.put(switch_mode_debug, KeyEvent.VK_2);
         keyMap.put(switch_mode_sun, KeyEvent.VK_3);
         keyMap.put(pause, KeyEvent.VK_ESCAPE);
+        keyMap.put(shoot, KeyEvent.VK_P);
 
         //Classify what's an action, a state, and a range
         actions.add(jump);
@@ -71,7 +72,7 @@ public class InputHandler implements KeyListener, MouseListener {
         states.put(move_right, false);
         states.put(turn_left, false);
         states.put(turn_right, false);
-
+        states.put(shoot, false);
         //define the Interface function mapping.
         events.put(move_forward, ()->context.move_forward());
         events.put(move_backward, ()->context.move_backward());
@@ -86,6 +87,7 @@ public class InputHandler implements KeyListener, MouseListener {
         events.put(switch_mode_debug,()->context.switch_mode_debug());
         events.put(switch_mode_sun, ()->context.switch_mode_sun());
         events.put(pause,()->context.pause());
+        events.put(shoot, ()->context.shoot());
     }
 
     public static void setContext(InputNotifiee c){ //TODO: change parameter to Context later on down the line
@@ -100,7 +102,8 @@ public class InputHandler implements KeyListener, MouseListener {
         turn_left, turn_right,
         jump,
         switch_mode_normal, switch_mode_debug, switch_mode_sun,
-        pause
+        pause,
+        shoot
     }
 
     //Method for state inputs (gets called from World.render() ).
@@ -149,6 +152,7 @@ public class InputHandler implements KeyListener, MouseListener {
             case "Jump": action = jump; break;
             case "Switch Mode": action = switch_mode_normal; break;
             case "Pause" : action = pause; break;
+            case "Shoot" : action = shoot; break;
             default : System.err.println("Unrecognized Action.");
         }
         return action;
