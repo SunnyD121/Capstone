@@ -234,14 +234,14 @@ public class InputHandler implements KeyListener, MouseListener {
         if (e.getButton() == 3){    //right click
             Vector2f difference = new Vector2f();
             mouseClickOrigin.sub(new Vector2f(e.getX(), e.getY()), difference);
-            context.move_camera(difference);
+            context.move_camera(difference.negate());
             mouseClickOrigin = new Vector2f(e.getX(), e.getY());
         }
     }
 
     @Override
     public void mouseWheelMoved(MouseEvent e) {
-        context.zoom(e.getRotation()[1]);
+        context.zoom(-e.getRotation()[1]);
     }
 
     //End MouseListener Interface

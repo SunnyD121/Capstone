@@ -32,7 +32,6 @@ public class Player extends Character{
 
     @Override
     public void init(){
-        //TODO: this.   EDIT: ???
         model.init();
     }
 
@@ -53,7 +52,7 @@ public class Player extends Character{
         //define the material's light properties
         Material material = new Material();
         material.Kd = new Vector3f(1,1,1);
-        //material.Ks = new Vector3f(1,0,0);    //humans aren't shiny!
+        //material.Ks = new Vector3f(1,1,1);    //humans aren't shiny!
         material.setUniforms(shader);
 
         model.render(shader, m);

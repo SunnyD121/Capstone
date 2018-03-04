@@ -65,6 +65,7 @@ public class GLListener implements GLEventListener {
 
         //paints background.
         gl.glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+        //gl.glClearColor(0,0,0,1);
 
         // Load and compile the shaders
         try {
@@ -126,7 +127,7 @@ public class GLListener implements GLEventListener {
         //More shadow stuff
         shadowCamera = new Camera();
         shadowCamera.orient(world.getSunlightDirection().mul(160), new Vector3f(0), new Vector3f(0,1,0));
-        shadowCamera.setViewVolume(50.0f,1.0f,1.0f,25.0f);
+        //shadowCamera.setViewVolume(50.0f,1.0f,1.0f,25.0f);        //EDIT: Do NOT use this line of code, breaks shadow map visual
         Matrix4f shadowBias = new Matrix4f(     //TODO: This might need to be transposed?
                 0.5f,0.0f,0.0f,0.0f,
                 0.0f,0.5f,0.0f,0.0f,

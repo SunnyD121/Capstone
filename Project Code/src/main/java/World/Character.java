@@ -2,6 +2,7 @@ package World;
 
 import Core.Shader;
 import Core.TriangleMesh;
+import Shapes.CharacterModel;
 import org.joml.Vector3f;
 
 /**
@@ -9,7 +10,7 @@ import org.joml.Vector3f;
  */
 public abstract class Character {
 
-    TriangleMesh model;
+    CharacterModel model;
     Vector3f position;
     Vector3f direction;
 
@@ -22,7 +23,7 @@ public abstract class Character {
     }
 
     public void setPosition(Vector3f pos){
-        position = pos;
+        position = new Vector3f(pos);
     }
 
     public Vector3f getDirection(){
@@ -30,10 +31,11 @@ public abstract class Character {
     }
 
     public void setDirection(Vector3f dir){
-        direction = dir;
+        direction = new Vector3f(dir);
     }
 
     public void move(float distance){
+        model.animate();    //BUG: Alters static data from a class instance.
         Vector3f temp = new Vector3f();
         direction.mul(distance, temp);
         position.add(temp, position);

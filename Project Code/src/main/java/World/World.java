@@ -39,6 +39,7 @@ import static com.jogamp.opengl.GL.*;
 public class World implements InputNotifiee {
 
     private Vector3f initialPlayerPosition;
+    private Vector3f initialPlayerDirection;
     private Player player;
     private Camera cam1, cam2, cam3;
     private float zoom_factor = 1;
@@ -213,7 +214,8 @@ public class World implements InputNotifiee {
         player.setPosition(initialPlayerPosition);
         Vector3f dir = new Vector3f(player.getDirection());
         dir.rotateAxis((float)Math.toRadians(70.0f), 0,1,0);
-        player.setDirection(dir.normalize(dir));
+        initialPlayerDirection = new Vector3f(dir.normalize());
+        player.setDirection(initialPlayerDirection);
 
         //Cameras
         cam1 = new Camera();
@@ -227,7 +229,6 @@ public class World implements InputNotifiee {
     } //end init()
 
     boolean isPaused = false;
-    float twist = 0;
     public void render(Shader shader){
         Matrix4f worldToEye = updateCamera(shader);
         updateLight(shader, worldToEye);
@@ -248,7 +249,7 @@ public class World implements InputNotifiee {
         //EDIT: moved to drawWorld()
 
         //check if player is out-of-bounds
-        if (player.getPosition().y < -3) killPlayer();
+        if (player.getPosition().y < -5) killPlayer();
 
         //poll for user input
         InputHandler.pollInput();   //there is value in doing this, because this gets called once per frame
@@ -406,10 +407,26 @@ public class World implements InputNotifiee {
         shader.setUniform("laserIntensity", new Vector3f(0,0,25));
         //for (int i=0;i<10;i++)shader.setUniform("laserPositions["+i+"]", player.getPosition());
 
+        /*
+        float angle = (float)Math.acos(player.getDirection().dot(initialPlayerDirection));  //probably in radians?
+        if (player.getDirection().equals(initialPlayerDirection)) angle = 0;    //check for division by 0
 
+        //float angleOffset = angle / (float)Math.toRadians(180); //percent player has turned
+        //System.out.println((float)Math.toDegrees(angle));
+        //System.out.printf("%.2f", angleOffset); System.out.println("%");
+        //angleOffset *= 2;
+        angle = (float)Math.toRadians(angle);
+        float correction;
+        if (angle < 180) correction = (angle/180.0f) * (0.5f * 2);
+        else correction = (1 - (angle-180)/180.0f) * (0.5f * 2);
+        float z = 0.5f - correction;
+        //if (angleOffset < 1) finale = 0.5f + angleOffset;
+        //else finale = 0.5f + 1 - (1 - angleOffset);
+        //System.out.println("Finale: " + finale);    //for the z component of the location below. CURRENTLY BUGGED.
+        //Perhaps not linear correction
+        */
 
-        laserEmitter.update(shader, player.getPosition().add(new Vector3f(0,2.5f,0), new Vector3f()), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
-
+        laserEmitter.update(shader, player.getPosition().add(new Vector3f(0,2.5f,0.5f), new Vector3f()), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
     }
 
     private Matrix4f updateCamera(Shader shader){
@@ -428,7 +445,7 @@ public class World implements InputNotifiee {
             //arg1.z *= zoom_factor;
 
             player.getPosition().add(player.getDirection().mul(4.0f, g), arg2);                                                     //cam lookAt point
-            cam1.orient(arg1, arg2, new Vector3f(1,0,0));                                                                    //__,__,cam Up vector
+            cam1.orient(arg1, arg2, new Vector3f(0,1,0));                                                                    //__,__,cam Up vector
 
             //set the looking at matrix.
             player.getPosition().add(player.getDirection().mul(10.0f, g), arg2);
@@ -460,7 +477,6 @@ public class World implements InputNotifiee {
 
         //draw the lamp's light
         shader.setUniform("lampIntensity", new Vector3f(18.0f));
-        shader.setUniform("ambientIntensity", new Vector3f(0.05f));  //formerly 0.0f
 
         for (int i = 0; i < lampData.size(); i++) {
             Vector4f lampPosition = new Vector4f(lampData.get(i).x, lampData.get(i).y, lampData.get(i).z, 1.0f);
@@ -533,8 +549,8 @@ public class World implements InputNotifiee {
     public Vector3f getSunlightDirection() {return new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z);}
 
     public void killPlayer(){
-        System.out.println("Checkpoint!");
         player.setPosition(initialPlayerPosition);
+        player.setDirection(initialPlayerDirection);
     }
 
     //InputNotifiee interface
@@ -567,8 +583,10 @@ public class World implements InputNotifiee {
             cam2.slide(cam2.getV());
         else if (mode == SUN_VIEW)
             cam3.slide(cam3.getN());
-        else
+        else{
+            //player.moveY(0.3f);
             System.out.println("People don't normally float up into the air.");
+        }
     }
 
     @Override

@@ -18,9 +18,10 @@ uniform float shine;
 uniform vec3 emission;          //how much light is emitted.
 uniform vec3 sunDirection;      //direction the sun beams down
 uniform vec3 sunIntensity;      //how strong the sun is
-uniform vec3 ambientIntensity;  //how strong the ambient light of the scene is. (alternative to sun?)
 uniform sampler2D tex;
 uniform sampler2DShadow shadowMap;
+
+vec3 ambientIntensity = vec3(0.05f);    //how strong the ambient light of the scene is. (alternative to sun?)
 
 in vec3 normal;
 in vec3 eyePos;
@@ -90,7 +91,8 @@ subroutine (renderPassType) void renderScene(){
     //light equation, sun
     color += sunIntensity * (diffuseComponent * max(dot(n,l),0.0) + Ks * pow(max(dot(h,n),0.0), shine));
     //if fragment is in shadow, only use ambient light (shadow = 0)
-    color *= shadow;
+    //color *= shadow;
+//if (shadow < 0.5f) color= vec3(1,0,0);
     color += ambientIntensity * ambientComponent;
     color += emission;
 

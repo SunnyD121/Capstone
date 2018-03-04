@@ -100,7 +100,7 @@ public class Camera {
     }
 
     public Vector3f getPosition(){
-        return position;
+        return new Vector3f(position);
     }
 
     //NOTE: returning new Vectors because these are getters. Using them should NOT alter the actual variables. But joml...
