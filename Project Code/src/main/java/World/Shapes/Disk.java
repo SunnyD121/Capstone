@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
 
 import java.nio.FloatBuffer;
@@ -15,6 +15,21 @@ public class Disk extends TriangleMesh {
     public Disk(float radius, int slices){
         this.radius = radius;
         this.slices = slices;
+    }
+
+    @Override
+    public float getLength() {
+        return radius * 2.0f;
+    }
+
+    @Override
+    public float getHeight() {
+        return radius * 2.0f;
+    }
+
+    @Override
+    public float getWidth() {
+        return 0;
     }
 
     @Override

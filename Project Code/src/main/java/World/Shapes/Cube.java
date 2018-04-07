@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
 
 import java.nio.FloatBuffer;
@@ -15,6 +15,21 @@ public class Cube extends TriangleMesh {
 
     public Cube (float side){
         sideLength = side;
+    }
+
+    @Override
+    public float getLength() {
+        return sideLength;
+    }
+
+    @Override
+    public float getHeight() {
+        return sideLength;
+    }
+
+    @Override
+    public float getWidth() {
+        return sideLength;
     }
 
     @Override

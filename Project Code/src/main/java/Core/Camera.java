@@ -13,40 +13,75 @@ public class Camera {
     float fovy;
     float nearPlane, farPlane;
     float aspect;
+    //for ortho projections:
+    float nearX,nearY,nearZ,farX,farY,farZ;
+    Vector3f lookAt, up;
 
-    public Camera(){
+    ProjectionType pType;
+
+    public enum ProjectionType{
+        PERSPECTIVE, ORTHO
+    }
+
+    public Camera(ProjectionType type){
         setViewVolume(45.0f, 1.0f, 1.0f, 1000.0f);   //far is the max render distance!
         u = new Vector3f();
         v = new Vector3f();
         n = new Vector3f();
+
+        pType = type;
+    }
+
+    public void setOrtho(float minX, float maxX, float minY, float maxY, float minZ, float maxZ){
+        nearX = minX;
+        nearY = minY;
+        nearZ = minZ;
+        farX = maxX;
+        farY = maxY;
+        farZ = maxZ;
     }
 
     public Matrix4f getProjectionMatrix(){
         Matrix4f m = new Matrix4f();
-        m.perspective((float)Math.toRadians(fovy), aspect, nearPlane, farPlane);
+        if (pType == ProjectionType.PERSPECTIVE)
+            m.perspective((float)Math.toRadians(fovy), aspect, nearPlane, farPlane);
+        else //pType == ORTHO
+            m.ortho(nearX,farX,nearY,farY,nearZ,farZ);
         return m;
     }
 
     public Matrix4f getViewMatrix(){
-        Matrix4f rotation = new Matrix4f(
-                u.x, u.y, u.z, 0.0f,
-                v.x, v.y, v.z, 0.0f,
-                n.x, n.y, n.z, 0.0f,
-                0.0f, 0.0f, 0.0f, 1.0f
-        );
-        rotation.transpose();
+        if (pType != ProjectionType.ORTHO) {
+            Matrix4f rotation = new Matrix4f(
+                    u.x, u.y, u.z, 0.0f,
+                    v.x, v.y, v.z, 0.0f,
+                    n.x, n.y, n.z, 0.0f,
+                    0.0f, 0.0f, 0.0f, 1.0f
+            );
+            rotation.transpose();
 
-        Matrix4f translation = new Matrix4f(
-                1.0f, 0.0f, 0.0f, 0.0f,
-                0.0f, 1.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f,
-                -position.x, -position.y, -position.z, 1.0f
-        );
+            Matrix4f translation = new Matrix4f(
+                    1.0f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 1.0f, 0.0f, 0.0f,
+                    0.0f, 0.0f, 1.0f, 0.0f,
+                    -position.x, -position.y, -position.z, 1.0f
+            );
 
-        Matrix4f destination = new Matrix4f();
-        destination = rotation.mul(translation, destination);
+            Matrix4f destination = new Matrix4f();
+            destination = rotation.mul(translation, destination);
 
-        return destination;
+            return destination;
+        }
+        else {//pType = ORTHO
+            return new Matrix4f().lookAt(position, lookAt, up);
+        }
+    }
+
+    public void setLookAtMatrix(Vector3f position, Vector3f lookAtPosition, Vector3f up){
+        //TODO: calculate u,v,n based on these passed arguments.
+        this.position = position;
+        lookAt = lookAtPosition;
+        this.up = up;
     }
 
     public void setViewVolume(float fov, float aspect, float near, float far){
@@ -64,6 +99,8 @@ public class Camera {
         n.cross(u, v);
         v.normalize();
         position = location;
+        this.lookAt = lookAt;
+        this.up = up;
     }
 
     public void slide(final Vector3f distance){

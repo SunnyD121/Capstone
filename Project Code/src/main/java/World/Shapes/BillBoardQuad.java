@@ -1,11 +1,9 @@
-package Shapes;
+package World.Shapes;
 
-import Core.Camera;
 import Core.Shader;
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Matrix4f;
-import org.joml.Vector2f;
 import org.joml.Vector3f;
 
 import java.nio.FloatBuffer;
@@ -16,6 +14,21 @@ public class BillBoardQuad extends TriangleMesh{
 
     public BillBoardQuad(float sideLength){
         this.sideLength = sideLength;
+    }
+
+    @Override
+    public float getLength() {
+        return sideLength;
+    }
+
+    @Override
+    public float getHeight() {
+        return sideLength;
+    }
+
+    @Override
+    public float getWidth() {
+        return 0;
     }
 
     @Override

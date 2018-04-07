@@ -1,5 +1,8 @@
-package Core;
+package World;
 
+import Core.Shader;
+import World.Material;
+import World.SceneEntity;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Matrix4f;
@@ -15,7 +18,7 @@ import static Core.GLListener.gl;
 /**
  * Created by (User name) on 7/25/2017.
  */
-public abstract class TriangleMesh {
+public abstract class TriangleMesh extends SceneEntity {
 
     protected int vao = 0;
     protected int elements = 0;
@@ -40,14 +43,33 @@ public abstract class TriangleMesh {
     }
     public void render(Shader shader, Vector3f v1, Vector3f v2){System.out.println("This is an error. Why have you come here?");}
 
-    public void renderWithLines(Shader shader, Vector4f color, Vector4f lineColor){
+    public void renderWithLines(Shader shader, Vector3f color, Vector3f lineColor){
+        Material m = new Material();
+
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL);
-        shader.setUniform("color", color);
+        m.Kd = color;
+        m.setUniforms(shader);
         render();
 
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE);
-        shader.setUniform("color", lineColor);
+        m.Kd = lineColor;
+        m.setUniforms(shader);
         render();
+
+        //reset for normal rendering.
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL);
+    }
+
+    public void renderOnlyLines(Shader shader, Vector3f lineColor){
+        Material m = new Material();
+
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE);
+        m.Kd = lineColor;
+        m.setUniforms(shader);
+        render();
+
+        //reset
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL);
     }
 
     final public void initGpuVertexArrays(

@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 
 
 /**

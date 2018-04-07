@@ -1,10 +1,12 @@
 package World;
 
 import Core.*;
+import Core.CollisionDetectionSystem.CollisionDetectionSystem;
+import Core.CollisionDetectionSystem.FixedBoundingBox;
 import GUI.PauseMenu;
-import Shapes.*;
-import Shapes.Rectangle;
-import Utilities.Utilities;
+import World.Particles.Particle;
+import World.Shapes.*;
+import World.Shapes.Rectangle;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 
@@ -17,7 +19,6 @@ import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import java.awt.*;
 import java.io.FileReader;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -27,7 +28,6 @@ import java.util.ArrayList;
 
 import static Core.GLListener.gl;
 import static World.Emitter.ParticleType.LASER;
-import static World.Emitter.ParticleType.SNOWFLAKE;
 import static World.World.CameraMode.CHASE;
 import static World.World.CameraMode.DEBUG_VIEW;
 import static World.World.CameraMode.SUN_VIEW;
@@ -38,29 +38,28 @@ import static com.jogamp.opengl.GL.*;
  */
 public class World implements InputNotifiee {
 
-    private Vector3f initialPlayerPosition;
-    private Vector3f initialPlayerDirection;
-    private Player player;
+    private final Vector3f GRAVITY = new Vector3f(0, -0.2f, 0);
+
+    private static Vector3f initialPlayerPosition;
+    private static Vector3f initialPlayerDirection;
+    private static Player player;
     private Camera cam1, cam2, cam3;
     private float zoom_factor = 1;
     private final float MAX_ZOOM = 3;
     private final float MIN_ZOOM = 0.5f;
     protected CameraMode mode = CHASE;   //default is CHASE
+    private static ArrayList<SceneEntity> worldObjects;
     private Vector3f sunlightDirection;
-    private ArrayList<Vector3f> treeLocation;
     private ArrayList<Building> city;
-    private Rectangle ground;
+    private Ground ground;
     private JsonObject jsonObject;
     private Vector3f fixedPos, debuggerStartPos;
-    private ArrayList<Cylinder> forestTrunks;
-    private ArrayList<Cone> forestTops;
-    private ArrayList<Vector4f> lampData;  //(x,y,z,height)
-    private ArrayList<Cylinder> lampPosts;
-    private ArrayList<IcoSphere> lampBulbs;
-    private ArrayList<Vector3f> stepPyramidPosition;
+    private ArrayList<Tree> trees;
+    private ArrayList<Lamp> lamps;
     private ArrayList<StepPyramid> stepPyramids;
     private int[] textureIDs = new int[4];  //change this value per number of textures being loaded.
     private Emitter snowEmitter, laserEmitter;
+    private CollisionDetectionSystem CDS;
 
     protected enum CameraMode{
         CHASE, DEBUG_VIEW, SUN_VIEW
@@ -85,15 +84,19 @@ public class World implements InputNotifiee {
         JsonReader reader = gson.newJsonReader(fileReader);
         jsonObject = (JsonObject) parse.parse(reader);
 
-        player = new Player();
+        worldObjects = new ArrayList<>();
+        trees = new ArrayList<>();
+        lamps = new ArrayList<>();
+
+        CDS = CollisionDetectionSystem.getInstance();
 
     }
 
     public void init(){
         //bounding box coordinates, forms two opposite vertices.
         JsonArray bbox = jsonObject.get("bbox").getAsJsonArray();
-        Vector3f min = new Vector3f(bbox.get(0).getAsFloat(), bbox.get(1).getAsFloat(), bbox.get(2).getAsFloat());
-        Vector3f max = new Vector3f(bbox.get(3).getAsFloat(), bbox.get(4).getAsFloat(), bbox.get(5).getAsFloat());
+        Vector3f minbbox = new Vector3f(bbox.get(0).getAsFloat(), bbox.get(1).getAsFloat(), bbox.get(2).getAsFloat());
+        Vector3f maxbbox = new Vector3f(bbox.get(3).getAsFloat(), bbox.get(4).getAsFloat(), bbox.get(5).getAsFloat());
 
         //fixed camera position
         JsonArray fixed = jsonObject.get("photoPosition").getAsJsonArray();
@@ -127,45 +130,55 @@ public class World implements InputNotifiee {
 
             //create the building in the world
             city.get(i).setData(points, height);
+
+            addWorldObject(city.get(i));
         }
 
         //Trees
         JsonArray woods = jsonObject.get("trees").getAsJsonArray();
-        treeLocation = new ArrayList<>();
-        forestTrunks = new ArrayList<>();
-        forestTops = new ArrayList<>();
         for(int i = 0; i < woods.size(); i++){
             JsonObject tree = woods.get(i).getAsJsonObject();
             JsonArray treePosition = tree.get("position").getAsJsonArray();
-            treeLocation.add(new Vector3f(treePosition.get(0).getAsFloat(), treePosition.get(1).getAsFloat(), treePosition.get(2).getAsFloat()));
             float treeHeight = tree.get("height").getAsFloat();
-            forestTrunks.add(new Cylinder(0.4f, treeHeight * 0.3f));
-            forestTops.add(new Cone(1,treeHeight * 0.7f,20, false));
+            trees.add(new Tree(
+                    new Cylinder(0.4f, treeHeight * 0.3f),
+                    new Cone(1, treeHeight * 0.7f, 20, false),
+                    new Vector3f(treePosition.get(0).getAsFloat(),treePosition.get(1).getAsFloat(),treePosition.get(2).getAsFloat() )
+            ));
+
+            addWorldObject(trees.get(i));
         }
 
         //Ground
-        Vector3f p1 = new Vector3f(min.x, min.y, max.z);
-        Vector3f p2 = new Vector3f(max.x, min.y, max.z);
-        Vector3f p3 = new Vector3f(max.x, min.y, min.z);
-        Vector3f p4 = min;
-        ground = new Rectangle(p1, p2, p3, p4);
+        Vector3f p1 = new Vector3f(minbbox.x, minbbox.y, maxbbox.z);    //using the bounding box to derive the ground of the world.
+        Vector3f p2 = new Vector3f(maxbbox.x, minbbox.y, maxbbox.z);
+        Vector3f p3 = new Vector3f(maxbbox.x, minbbox.y, minbbox.z);
+        Vector3f p4 = minbbox;
+        ground = new Ground(p1, p2, p3, p4);
+
+        addWorldObject(ground);
 
         //Player
         JsonArray startPosition = jsonObject.get("startPosition").getAsJsonArray();
-        initialPlayerPosition = new Vector3f(startPosition.get(0).getAsFloat(), startPosition.get(1).getAsFloat(), startPosition.get(2).getAsFloat());
+        initialPlayerPosition = new Vector3f(startPosition.get(0).getAsFloat(), startPosition.get(1).getAsFloat() + 1, startPosition.get(2).getAsFloat());
+        player = new Player();
+
+        player = new Player();
+        addWorldObject(player);
 
         //Lamps
         JsonArray lights = jsonObject.get("lamps").getAsJsonArray();
-        lampData = new ArrayList<>();
-        lampPosts = new ArrayList<>();
-        lampBulbs = new ArrayList<>();
         for (int i = 0; i < lights.size(); i++) {        //for each lamp
             JsonObject lampInfo = lights.get(i).getAsJsonObject();
             JsonArray lampPos = lampInfo.get("position").getAsJsonArray();  //get the position of a lamp
             float height = lampInfo.get("height").getAsFloat();
-            lampData.add(new Vector4f(lampPos.get(0).getAsFloat(), lampPos.get(1).getAsFloat(), lampPos.get(2).getAsFloat(), height));
-            lampPosts.add(new Cylinder(0.5f, height));
-            lampBulbs.add(new IcoSphere(1.0f, 3));
+            lamps.add(new Lamp(
+                    new Cylinder(0.5f, height),
+                    new IcoSphere(1.0f, 3),
+                    new Vector4f(lampPos.get(0).getAsFloat(), lampPos.get(1).getAsFloat(), lampPos.get(2).getAsFloat(), height)
+            ));
+
+            addWorldObject(lamps.get(i));
         }
 
         //Weather
@@ -174,19 +187,20 @@ public class World implements InputNotifiee {
         sunlightDirection = new Vector3f(sunDirection.get(0).getAsFloat(), sunDirection.get(1).getAsFloat(), sunDirection.get(2).getAsFloat());
 
         //Step Pyramids
-        stepPyramidPosition = new ArrayList<>();
         stepPyramids = new ArrayList<>();
         JsonArray stepramids = jsonObject.get("steppyramids").getAsJsonArray();
         for (int i=0;i<stepramids.size();i++){
             JsonObject pyramidData = stepramids.get(i).getAsJsonObject();
             JsonArray positionData = pyramidData.get("position").getAsJsonArray();
-            stepPyramidPosition.add(new Vector3f(positionData.get(0).getAsFloat(), positionData.get(1).getAsFloat(), positionData.get(2).getAsFloat()));
             stepPyramids.add(new StepPyramid(
+                    new Vector3f(positionData.get(0).getAsFloat(), positionData.get(1).getAsFloat(), positionData.get(2).getAsFloat()),
                     pyramidData.get("baselength").getAsFloat(),
                     pyramidData.get("stepheight").getAsFloat(),
                     pyramidData.get("stepshrink").getAsFloat(),
                     pyramidData.get("mirrored").getAsBoolean()
             ));
+
+            addWorldObject(stepPyramids.get(i));
         }
 
         //Textures
@@ -197,12 +211,11 @@ public class World implements InputNotifiee {
 
         //init calls
         for (Building b : city) b.init();
-        for (Cylinder cyl : forestTrunks) cyl.init();
-        for (Cone cone : forestTops) cone.init();
-        for (Cylinder cyl : lampPosts) cyl.init();
-        for (IcoSphere sphere : lampBulbs) sphere.init();
+        for (Tree t : trees) t.init();
+        for (Lamp l : lamps) l.init();
         for (StepPyramid step : stepPyramids) step.init();
         ground.init();
+        player.init();
 
         //Particles
         //NOTE: increasing the particleDensity increases severity of storm, but it also introduces lag.
@@ -210,7 +223,7 @@ public class World implements InputNotifiee {
         laserEmitter = new Emitter(LASER, new Vector3f(0,4,0), new Vector3f(0), 1);
 
         //world has been initialized, now add dynamic things like players
-        player.init();
+
         player.setPosition(initialPlayerPosition);
         Vector3f dir = new Vector3f(player.getDirection());
         dir.rotateAxis((float)Math.toRadians(70.0f), 0,1,0);
@@ -218,14 +231,39 @@ public class World implements InputNotifiee {
         player.setDirection(initialPlayerDirection);
 
         //Cameras
-        cam1 = new Camera();
-        cam2 = new Camera();
+        cam1 = new Camera(Camera.ProjectionType.PERSPECTIVE);
+        cam2 = new Camera(Camera.ProjectionType.PERSPECTIVE);
         cam2.orient(debuggerStartPos, new Vector3f(0,0,0), new Vector3f(0,1,0));
-        cam3 = new Camera();
+        cam3 = new Camera(Camera.ProjectionType.ORTHO);
         Vector3f camera3Pos = new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z).mul(160);
         cam3.orient(camera3Pos, new Vector3f(0,0,0), new Vector3f(0,1,0));
+        cam3.setOrtho(-100,100,-100,100,-100,100);
         //cam3.setViewVolume(50.0f,1.0f,1.0f,250.0f); //not needed, values are set in other statements
 
+        /* Collision Boxes */
+        //player
+        CDS.addCollisionBox(player, player.getPosition(), player.getLength(), player.getHeight(), player.getWidth(), player.getGroundAdjustment());
+        //buildings
+        for (Building b : city) {
+            Vector3f minP = b.getMin();
+            Vector3f maxP = b.getMax();
+            CDS.addCollisionBox(b, minP, maxP, null);
+        }
+        //trees
+        for (Tree tree : trees) CDS.addCollisionBox(tree, tree.getPosition(), tree.getLength(), tree.getHeight(), tree.getWidth(), tree.getPositionalOffset());
+        //ground
+        CDS.addCollisionBox(ground, ground.getPosition(), ground.getLength(), ground.getWidth(), ground.getHeight(), null);
+                //width and height switch here because of how getHeight() and getWidth() are defined in Rectangle. 3D vs 2D.
+        //lamps
+        for (Lamp lamp : lamps) CDS.addCollisionBox(lamp, lamp.getPosition(), lamp.getLength(), lamp.getHeight(), lamp.getWidth(), lamp.getPositionalOffset());
+        //steppyramid
+        for (StepPyramid pyr : stepPyramids) CDS.addCollisionBox(pyr, pyr.getPosition(), pyr.getLength(), pyr.getHeight(), pyr.getWidth(), pyr.getPositionalOffset());
+        //Particles
+        //This must be done when the object is created, so, not here.
+        //TODO: Particle box doesn't accurately surround laser
+
+//        CDS.formConglomerates(Tree.class);  //creates a bounding box around all instances of Tree in the scene. (thus far)
+        CDS.postInit();
     } //end init()
 
     boolean isPaused = false;
@@ -233,7 +271,8 @@ public class World implements InputNotifiee {
         Matrix4f worldToEye = updateCamera(shader);
         updateLight(shader, worldToEye);
 
-        shader.setUniform("tex", 0);    //TODO: This only needs to be called one in init, but I don't want to pass a shader argument?   //EDIT: Does this need to be called?
+        //TODO: This only needs to be called one in init, but I don't want to pass a shader argument?   //EDIT: Does this need to be called?
+        shader.setUniform("tex", 1);    // 1 Because using glActiveTexture(TEXTURE1)
         shader.setUniform("ObjectToWorld", new Matrix4f());
 
         //Render Test Objects:
@@ -241,12 +280,16 @@ public class World implements InputNotifiee {
 
         //draw the objects of the world:
         drawWorld(shader);
-        //The following will not have a shadow.
+        //The following will not cast a shadow.
         drawGround(shader);
         drawParticles(shader);
 
-        //finished rendering the world, now render the player
-        //EDIT: moved to drawWorld()
+        //Test for colliding objects
+        CDS.testCollisions2();
+        CDS.drawBoundingBoxes(shader);
+
+        //add gravity
+        for (SceneEntity entity : worldObjects) if (entity.isAffectedByGravity) entity.move(GRAVITY);
 
         //check if player is out-of-bounds
         if (player.getPosition().y < -5) killPlayer();
@@ -266,89 +309,13 @@ public class World implements InputNotifiee {
     }
 
     private void drawTrees(Shader shader){
-        for(int i=0; i < treeLocation.size(); i++)
-            drawTree(shader, treeLocation.get(i), forestTrunks.get(i), forestTops.get(i));
-    }
-
-    private void drawTree(Shader shader, final Vector3f treeLocation, Cylinder trunk, Cone top){
-
-        Matrix4f rotation = new Matrix4f();
-        rotation.rotateX((float)Math.toRadians(-90), rotation);
-
-        Matrix4f attachment = new Matrix4f();
-        attachment.translate(new Vector3f(0,0,1), attachment);
-
-        Matrix4f deploy = new Matrix4f();
-        deploy.translate(treeLocation);
-        Matrix4f forCylinders = new Matrix4f(deploy);
-        Matrix4f forCones = new Matrix4f(deploy);
-
-        Material m = new Material();
-        //draw the tree trunk
-        m.Kd = new Vector3f(0.38f,0.2f,0.07f);  //brown
-        m.Ka = m.Kd;
-        m.setUniforms(shader);
-
-        Matrix4f temp = new Matrix4f();
-        forCylinders.translate(0,trunk.getHeight()/2.0f,0);    //Cylinder origin (0, halfheight, 0)
-        forCylinders.mul(rotation, temp);
-        shader.setUniform("ObjectToWorld", temp);
-        trunk.render();
-
-        //draw the tree top
-
-        m = new Material();
-        m.Kd = new Vector3f(0.1f, 0.6f, 0.1f);  //green
-        m.Ka = m.Kd;
-        m.setUniforms(shader);
-
-        forCones.translate(0, top.getHeight()/2.0f + trunk.getHeight() - 1,0);     //Cone origin is at (0,halfheight,0) //no clue the -1.
-        forCones.mul(rotation.mul(attachment), temp);
-        shader.setUniform("ObjectToWorld", temp);
-        top.render();
+        for (Tree t : trees) t.render(shader);
     }
 
     private void drawLamps(Shader shader){
-        for (int i = 0; i < lampData.size(); i++){
-            drawLamp(shader, lampData.get(i), lampPosts.get(i), lampBulbs.get(i));
-        }
+        for (Lamp l : lamps) l.render(shader);
     }
 
-    private void drawLamp(Shader shader, final Vector4f lampData, Cylinder post, IcoSphere bulb){
-        Matrix4f rotation = new Matrix4f();
-        rotation.rotateX((float)Math.toRadians(-90), rotation);
-
-        Matrix4f attachment = new Matrix4f();
-        attachment.translate(new Vector3f(0,0,1), attachment);
-
-        Matrix4f deploy = new Matrix4f();
-        deploy.translate(lampData.x, lampData.y, lampData.z);
-        Matrix4f forCylinders = new Matrix4f(deploy);
-        Matrix4f forSpheres = new Matrix4f(deploy);
-
-        Material m = new Material();
-        //draw the lamp post
-        m.Kd = new Vector3f(0.0f);      //black
-        m.Ka = m.Kd;
-        m.setUniforms(shader);
-
-        Matrix4f temp = new Matrix4f();
-        forCylinders.translate(0, post.getHeight()/2.0f, 0);    //Cylinder origin (0, halfheight, 0)
-        forCylinders.mul(rotation, temp);
-        shader.setUniform("ObjectToWorld", temp);
-        post.render();
-
-        //draw the lamp bulb
-        m.Ka = new Vector3f(100.0f);
-        m.Kd = new Vector3f(100.0f);
-        m.Ks = new Vector3f(1.0f);
-        m.Le = new Vector3f(1.0f);
-        m.shine = 1.0f;
-        m.setUniforms(shader);
-        forSpheres.translate(0, post.getHeight(), 0, temp);   // y + bulb.radius?
-        shader.setUniform("ObjectToWorld", temp);
-        bulb.render();
-    }
 
     private void drawBuildings(Shader shader){
 
@@ -358,7 +325,7 @@ public class World implements InputNotifiee {
         m.Ka = m.Kd;
         m.setUniforms(shader);
 
-        gl.glActiveTexture(GL_TEXTURE0);
+        gl.glActiveTexture(GL_TEXTURE1);
         gl.glBindTexture(GL_TEXTURE_2D, textureIDs[1]);
 
         for(Building b : city)
@@ -375,7 +342,7 @@ public class World implements InputNotifiee {
         m.Ka = m.Kd;
         m.setUniforms(shader);
 
-        gl.glActiveTexture(GL_TEXTURE0);
+        gl.glActiveTexture(GL_TEXTURE1);
         gl.glBindTexture(GL_TEXTURE_2D, textureIDs[2]);
 
         ground.render();
@@ -385,7 +352,7 @@ public class World implements InputNotifiee {
 
     private void drawStepPyramids(Shader shader){
         for(int i = 0; i < stepPyramids.size(); i++){
-            drawStepPyramid(shader, stepPyramidPosition.get(i), stepPyramids.get(i));
+            drawStepPyramid(shader, stepPyramids.get(i).getPosition(), stepPyramids.get(i));
         }
     }
 
@@ -410,23 +377,24 @@ public class World implements InputNotifiee {
         /*
         float angle = (float)Math.acos(player.getDirection().dot(initialPlayerDirection));  //probably in radians?
         if (player.getDirection().equals(initialPlayerDirection)) angle = 0;    //check for division by 0
-
+        System.out.printf("%.2f degrees\n",Math.toDegrees(angle));
         //float angleOffset = angle / (float)Math.toRadians(180); //percent player has turned
         //System.out.println((float)Math.toDegrees(angle));
         //System.out.printf("%.2f", angleOffset); System.out.println("%");
         //angleOffset *= 2;
-        angle = (float)Math.toRadians(angle);
+
         float correction;
-        if (angle < 180) correction = (angle/180.0f) * (0.5f * 2);
+        if (angle < Math.toRadians(180)) correction = ((float)Math.cos(angle)-1) * (0.5f);
         else correction = (1 - (angle-180)/180.0f) * (0.5f * 2);
         float z = 0.5f - correction;
+
         //if (angleOffset < 1) finale = 0.5f + angleOffset;
         //else finale = 0.5f + 1 - (1 - angleOffset);
         //System.out.println("Finale: " + finale);    //for the z component of the location below. CURRENTLY BUGGED.
         //Perhaps not linear correction
         */
 
-        laserEmitter.update(shader, player.getPosition().add(new Vector3f(0,2.5f,0.5f), new Vector3f()), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
+        laserEmitter.update(shader, player.getPosition().add(new Vector3f(0,2.5f,0.0f), new Vector3f()), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
     }
 
     private Matrix4f updateCamera(Shader shader){
@@ -462,8 +430,11 @@ public class World implements InputNotifiee {
         }
         else if (mode == SUN_VIEW){
             worldToEye = cam3.getViewMatrix();
-            shader.setUniform("WorldToEye", worldToEye);
-            shader.setUniform("Projection", cam3.getProjectionMatrix());    //new Matrix4f().ortho(-1000, 1000, -1000, 1000, -1000, 1000) ?
+            //shader.setUniform("WorldToEye", worldToEye);
+            //shader.setUniform("Projection", cam3.getProjectionMatrix());
+            shader.setUniform("WorldToEye", new Matrix4f().lookAt(getSunlightDirection(), new Vector3f(0), new Vector3f(0,1,0)));
+            shader.setUniform("Projection", cam3.getProjectionMatrix());
+
         }
         else {    //Unsupported Camera mode
             System.err.println("Unsupported Camera Mode: "+ mode.toString());
@@ -478,11 +449,9 @@ public class World implements InputNotifiee {
         //draw the lamp's light
         shader.setUniform("lampIntensity", new Vector3f(18.0f));
 
-        for (int i = 0; i < lampData.size(); i++) {
-            Vector4f lampPosition = new Vector4f(lampData.get(i).x, lampData.get(i).y, lampData.get(i).z, 1.0f);
-            float lampHeight = lampData.get(i).w;
-            //lampPosition.mul(worldToEye);    //originally worldToEye * lampPosition
-            shader.setUniform("lights["+i+"]",new Vector3f(lampPosition.x, lampPosition.y + lampHeight, lampPosition.z));
+        for (int i = 0; i < lamps.size(); i++){
+            Vector3f place = lamps.get(i).getPosition();
+            shader.setUniform("lights["+i+"]", new Vector3f(place.x, place.y + lamps.get(i).getLightHeight(), place.z));
         }
 
         //sunlight
@@ -532,7 +501,7 @@ public class World implements InputNotifiee {
             int[] texNames = new int[1];
             gl.glGenTextures(1, texNames, 0);
             textureIDs[iD] = texNames[0];   //if this gives arrayOutOfBoundsException, go up to the top and equal the array size with number of textures.
-            gl.glActiveTexture(GL_TEXTURE0);
+            gl.glActiveTexture(GL_TEXTURE1);
             gl.glBindTexture(GL_TEXTURE_2D, textureIDs[iD]);
         }
         catch (IOException e){System.err.println("Failed to load texture: " + filename); e.printStackTrace();}
@@ -548,7 +517,19 @@ public class World implements InputNotifiee {
 
     public Vector3f getSunlightDirection() {return new Vector3f(sunlightDirection.x, sunlightDirection.y, sunlightDirection.z);}
 
+    public static void addWorldObject(SceneEntity e){
+        worldObjects.add(e);
+    }
+
+    public static void removeWorldObject(SceneEntity e){
+        worldObjects.remove(e);
+    }
+    
     public void killPlayer(){
+        player.setPosition(initialPlayerPosition);
+        player.setDirection(initialPlayerDirection);
+    }
+    public static void spawnPlayer(){
         player.setPosition(initialPlayerPosition);
         player.setDirection(initialPlayerDirection);
     }
@@ -584,8 +565,8 @@ public class World implements InputNotifiee {
         else if (mode == SUN_VIEW)
             cam3.slide(cam3.getN());
         else{
-            //player.moveY(0.3f);
-            System.out.println("People don't normally float up into the air.");
+            player.moveY(0.3f);
+            //System.out.println("People don't normally float up into the air.");
         }
     }
 
@@ -595,9 +576,10 @@ public class World implements InputNotifiee {
             cam2.slide(cam2.getV().negate());
         else if (mode == SUN_VIEW)
             cam3.slide(cam3.getV().negate());
-        else
+        else {
             player.moveY(-0.3f);
-            System.out.println("People don't normally descend into the ground.");
+            //System.out.println("People don't normally descend into the ground.");
+        }
     }
 
     @Override
@@ -632,7 +614,10 @@ public class World implements InputNotifiee {
 
     @Override
     public void jump() {
-        System.err.println("Jumping is not implemented yet.");
+    //implement acceleration and velocity. ugh.
+        //player.isAffectedByGravity
+        //player.isOnGround
+        player.moveY(MOVE_SPEED * 10);
     }
 
 
@@ -660,7 +645,6 @@ public class World implements InputNotifiee {
     public void pause(){
         //TODO: pause animation?
         isPaused = !isPaused;
-        System.out.println("Key Pressed! isPaused: " + isPaused);
         PauseMenu.setVisibility(true);
     }
 

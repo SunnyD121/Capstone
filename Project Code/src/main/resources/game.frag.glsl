@@ -69,6 +69,9 @@ subroutine uniform renderPassType renderPass;
 
 subroutine (renderPassType) void renderScene(){
     bool debug = false;
+    //bool debugR = false;
+    //bool debugG = false;
+    //bool debugB = false;
     //if (!gl_FrontFacing)
         //discard;    //culls fragments that are being viewed from places players aren't meant to be.
         //EDIT: the above is handled in GLListener.java
@@ -80,10 +83,26 @@ subroutine (renderPassType) void renderScene(){
     vec3 v = normalize(-eyePos);
     vec3 n = normalize(normal);
 
-    float shadow = 1.0;
-        if( shadowCoord.z >= 0 ) {
-            shadow = textureProj(shadowMap, shadowCoord);   //TODO: This returns 0.0f. true/false maybe?
-        }
+    float shadow = 1.0f;
+
+    if( shadowCoord.z >= 0 ) {
+        shadow = textureProj(shadowMap, shadowCoord);
+    }
+
+    /*
+    if (textureProj(shadowMap, shadowCoord) == 1)   //see comments below, behaves the same way.
+        debug = true;
+    */
+    /*
+    if(texture(shadowMap, shadowCoord.xyz) == 0f){  //returns 1 for things that are white in the texture
+                                                    //returns 0 for things that are not white in the texture
+        shadow = 0;
+    }
+    */
+    /* true when perspective matrix is used.
+    if (shadowCoord.z > 170)
+        debug = true;
+    */
 
     //sun
     vec3 l = normalize(sunDirection);
@@ -91,8 +110,11 @@ subroutine (renderPassType) void renderScene(){
     //light equation, sun
     color += sunIntensity * (diffuseComponent * max(dot(n,l),0.0) + Ks * pow(max(dot(h,n),0.0), shine));
     //if fragment is in shadow, only use ambient light (shadow = 0)
-    //color *= shadow;
-//if (shadow < 0.5f) color= vec3(1,0,0);
+
+    color *= shadow;
+
+    if (debug) color= vec3(1,0,0);
+
     color += ambientIntensity * ambientComponent;
     color += emission;
 

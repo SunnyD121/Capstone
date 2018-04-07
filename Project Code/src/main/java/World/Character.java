@@ -1,18 +1,17 @@
 package World;
 
 import Core.Shader;
-import Core.TriangleMesh;
-import Shapes.CharacterModel;
+import World.Shapes.CharacterModel;
 import org.joml.Vector3f;
 
 /**
  * Created by (User name) on 8/14/2017.
  */
-public abstract class Character {
+public abstract class Character extends SceneEntity{
 
     CharacterModel model;
-    Vector3f position;
-    Vector3f direction;
+    //Vector3f direction;   //handled in superclass
+    //Vector3f position;    //handled in superclass
 
     public abstract void init();
 
@@ -39,6 +38,7 @@ public abstract class Character {
         Vector3f temp = new Vector3f();
         direction.mul(distance, temp);
         position.add(temp, position);
+
     }
     public void moveY(float distance){
         position.y += distance;

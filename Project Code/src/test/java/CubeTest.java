@@ -1,4 +1,4 @@
-import Shapes.Cube;
+import World.Shapes.Cube;
 import org.junit.Test;
 
 import static org.junit.Assert.*;

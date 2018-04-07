@@ -1,5 +1,6 @@
 package World;
 
+import Core.CollisionDetectionSystem.CollisionDetectionSystem;
 import Core.Shader;
 import World.Particles.Laser;
 import World.Particles.Particle;
@@ -34,10 +35,16 @@ public class Emitter {
     }
 
     public void addParticle(){
-        if (particles.size() > 1342) return;
-        if (type == SNOWFLAKE) particles.add(new Snowflake(location));
-        else if (type == LASER) particles.add(new Laser(location, direction));
+        Particle p = null;
+        if (type == SNOWFLAKE) p = new Snowflake(location);
+        else if (type == LASER) p = new Laser(location, direction);
         else System.err.println("This Particle has not been implemented in Emitter.addParticle(): "+type);
+
+        particles.add(p);
+        World.addWorldObject(p);
+
+        //add a collision box
+        CollisionDetectionSystem.getInstance().addCollisionBox(p, p.getPosition(), p.getHeight(), p.getLength(), p.getWidth(), null);
     }
 
     public void run(Shader shader, Vector3f location, Vector3f cameraPosition){
@@ -59,24 +66,28 @@ public class Emitter {
             Particle p = particles.get(i);
             //TODO: These if statements are yuck. There should be a more elegant solution?
             if (p instanceof Laser) {
-                shader.setUniform("laserPositions[" + counter + "]", p.getLocation());
+                shader.setUniform("laserPositions[" + counter + "]", p.getPosition());
                 counter++;
             }
 
             if (p instanceof Snowflake) ((Snowflake) p).run(shader, new Matrix4f(), cameraPosition);
             else p.run(shader);
 
-            if (p.isDead()) particles.remove(i);
+            if (p.isDead()) {
+                CollisionDetectionSystem.getInstance().removeCollisionBox(p);
+                World.removeWorldObject(p);
+                particles.remove(i);
+            }
         }
 
     }
 
     public void setLocation(Vector3f newLocation){
-        location = newLocation;
+        location = new Vector3f(newLocation);
     }
 
     public void setDirection(Vector3f newDirection){
-        direction = newDirection;
+        direction = new Vector3f(newDirection);
     }
 
     private void setMaterial(Shader shader, ParticleType type){
@@ -84,7 +95,7 @@ public class Emitter {
         switch (type){
             case SNOWFLAKE: m.Kd = new Vector3f(2,2,2); break;
             case LASER:
-                m.Kd = new Vector3f(0,0,2);
+                m.Kd = new Vector3f(1,1,1);
                 m.Ks = new Vector3f(0,0,2);
                 m.Le = new Vector3f(0,0,1);
                 break;

@@ -1,7 +1,6 @@
-package Shapes;
+package World.Shapes;
 
 import Core.Shader;
-import Core.TriangleMesh;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -44,6 +43,21 @@ public class AbstractHuman extends CharacterModel {
         head.init();
         leftHand.init();
         rightHand.init();
+    }
+
+    @Override
+    public float getLength() {
+        return body.getLength();
+    }
+
+    @Override
+    public float getHeight() {
+        return leftLeg.getHeight() + body.getHeight() + head.getHeight();
+    }
+
+    @Override
+    public float getWidth() {
+        return body.getWidth();
     }
 
     @Override

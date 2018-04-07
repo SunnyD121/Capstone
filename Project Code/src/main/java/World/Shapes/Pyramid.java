@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Vector3f;
 
@@ -18,6 +18,21 @@ public class Pyramid extends TriangleMesh {
     public Pyramid(float baseLength, float height){
         this.base = baseLength;
         this.height = height;
+    }
+
+    @Override
+    public float getLength() {
+        return base;
+    }
+
+    @Override
+    public float getHeight() {
+        return height;
+    }
+
+    @Override
+    public float getWidth() {
+        return base;
     }
 
     @Override

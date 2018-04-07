@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import Utilities.Utilities;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Vector3f;
@@ -16,9 +16,27 @@ public class Building extends TriangleMesh{
     private Vector3f[] base;
     private float[] height;
 
+    private float length;
+    private float width;
+
     public Building() {
         base = new Vector3f[4];
         height = new float[4];
+    }
+
+    public float getHeight(){
+        boolean same = true;
+        float tempVar = height[0];
+        for(int i =0; i < height.length; i++) if (tempVar != height[i]) same = false;
+
+        if(same) return tempVar;
+        else return -1;
+    }
+    public float getLength(){
+        return length;
+    }
+    public float getWidth(){
+        return width;
     }
 
     @Override
@@ -58,6 +76,36 @@ public class Building extends TriangleMesh{
             this.base[i] = base[i];
             this.height[i] = height[i];
         }
+        this.length = Utilities.dist(base[0], base[1]);
+        this.width = Utilities.dist(base[1], base[2]);
+
+        this.setPosition(interpolatePosition());
+    }
+
+    public Vector3f getMin(){
+        float minX = minValue(base[0].x,base[1].x,base[2].x,base[3].x);
+        float minY = base[0].y;
+        float minZ = minValue(base[0].z,base[1].z,base[2].z,base[3].z);
+        return new Vector3f(minX, minY, minZ);
+    }
+
+    public Vector3f getMax(){
+        float maxX = maxValue(base[0].x,base[1].x,base[2].x,base[3].x);
+        float maxY = height[0];
+        float maxZ = maxValue(base[0].z,base[1].z,base[2].z,base[3].z);
+        return new Vector3f(maxX, maxY, maxZ);
+    }
+
+    private float minValue(float...v){
+        float min = v[0];
+        for (float f : v) if (min > f) min = f;
+        return min;
+    }
+
+    private float maxValue(float...v){
+        float max = v[0];
+        for (float f : v) if (max < f) max = f;
+        return max;
     }
 
     private void buildFace(ArrayList<Float> points, ArrayList<Float> normals, ArrayList<Integer> index, int idx1, int idx2){
@@ -121,5 +169,14 @@ public class Building extends TriangleMesh{
         index.add(offset + 1);
         index.add(offset + 2);
     }
+
+    private Vector3f interpolatePosition(){
+        float centerX = (base[0].x < base[2].x ? base[0].x : base[2].x) + (Math.abs(base[0].x - base[2].x) / 2.0f);
+        float centerY = (height[0] - base[0].y) / 2.0f;
+        float centerZ = (base[0].z < base[2].z ? base[0].z : base[2].z) + (Math.abs(base[0].z - base[2].z) / 2.0f);
+
+        return new Vector3f(centerX, centerY, centerZ);
+    }
+
 
 }

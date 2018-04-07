@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 
 /**
  * Created by (User name) on 8/12/2017.
@@ -19,6 +19,17 @@ public class Cylinder extends TriangleMesh {
         p.setHeight(newHeight);
     }
 
+    @Override
+    public float getLength() {
+        return p.getLength();
+    }
+
+    @Override
+    public float getWidth() {
+        return p.getWidth();
+    }
+
+    @Override
     public float getHeight(){
         return p.getHeight();
     }

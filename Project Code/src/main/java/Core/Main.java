@@ -1,14 +1,20 @@
 package Core;
 
 import Trash.UserInputConfig;
+import Utilities.Utilities;
 import com.jogamp.newt.event.WindowAdapter;
 import com.jogamp.newt.event.WindowEvent;
 import com.jogamp.newt.opengl.GLWindow;
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.util.FPSAnimator;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
+import javax.rmi.CORBA.Util;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Comparator;
 
 public class Main {
 
@@ -18,14 +24,17 @@ public class Main {
     */
 
     public static void main(String[] args) {
+        function(args);
 
+    }
+    public static void function(String [] args){
         // Set the profile to 4.0 core
         GLProfile glp = GLProfile.get("GL4");
         GLCapabilities caps = new GLCapabilities(glp);
 
         //get current screen's dimensions
-        int screenwidth = (int)Toolkit.getDefaultToolkit().getScreenSize().getWidth();
-        int screenheight = (int)Toolkit.getDefaultToolkit().getScreenSize().getHeight();
+        //int screenwidth = (int)Toolkit.getDefaultToolkit().getScreenSize().getWidth();
+        //int screenheight = (int)Toolkit.getDefaultToolkit().getScreenSize().getHeight();
 
         // Create the GLWindow
         GLWindow glWindow = GLWindow.create(caps);
@@ -57,4 +66,5 @@ public class Main {
         // Show the window
         glWindow.setVisible(true);
     }
+
 }

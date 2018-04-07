@@ -59,6 +59,15 @@ public class BiMap<K,V> {
         return keys.size();
     }
 
+    public ArrayList<K> keySet() {
+        return keys;
+    }
+    public ArrayList<V> valueSet() {
+        return values;
+    }
+
+    public int getKeyIndex(K key){ return keys.indexOf(key);}
+    public int getValueIndex(V value) { return values.indexOf(value);}
 
     private void error(String message){
         System.err.println(message);

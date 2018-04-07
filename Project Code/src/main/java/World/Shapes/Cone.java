@@ -1,7 +1,7 @@
-package Shapes;
+package World.Shapes;
 
 import Core.Shader;
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -27,6 +27,17 @@ public class Cone extends TriangleMesh {
         this.capped = capped;
     }
 
+    @Override
+    public float getLength() {
+        return radius * 2.0f;
+    }
+
+    @Override
+    public float getWidth() {
+        return radius * 2.0f;
+    }
+
+    @Override
     public float getHeight(){
         return height;
     }

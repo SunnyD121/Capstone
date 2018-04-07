@@ -1,6 +1,7 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
+import Utilities.Utilities;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Vector3f;
 
@@ -17,7 +18,23 @@ public class Rectangle extends TriangleMesh {
     //points must be counterclockwise!
     public Rectangle(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f p4){
         p = new Vector3f[4];
-        setPosition(p1, p2, p3, p4);
+        setVertexData(p1, p2, p3, p4);
+        setPosition(interpolateCenter());
+    }
+
+    @Override
+    public float getLength() {
+        return Utilities.dist(p[0], p[1]);
+    }
+
+    @Override
+    public float getHeight() {
+        return Utilities.dist(p[1],p[2]);
+    }
+
+    @Override
+    public float getWidth() {
+        return 0;
     }
 
     @Override
@@ -61,10 +78,18 @@ public class Rectangle extends TriangleMesh {
 
 
 
-    private void setPosition(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f p4){
+    private void setVertexData(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f p4){
         p[0] = p1;
         p[1] = p2;
         p[2] = p3;
         p[3] = p4;
+    }
+
+    private Vector3f interpolateCenter(){
+        float centerX = (p[0].x < p[2].x ? p[0].x : p[2].x) + (Math.abs(p[0].x - p[2].x) / 2.0f);
+        float centerY = (p[0].y < p[2].y ? p[0].y : p[2].y) + (Math.abs(p[0].y - p[2].y) / 2.0f);
+        float centerZ = (p[0].z < p[2].z ? p[0].z : p[2].z) + (Math.abs(p[0].z - p[2].z) / 2.0f);
+
+        return new Vector3f(centerX, centerY, centerZ);
     }
 }

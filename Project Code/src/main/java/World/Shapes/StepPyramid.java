@@ -1,15 +1,16 @@
-package Shapes;
+package World.Shapes;
 
 import Core.Shader;
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 
 /**
  * Created by (User name) on 8/12/2017.
  */
-public class StepPyramid extends TriangleMesh {
+public class StepPyramid extends TriangleMesh implements CompositeShape{
 
     private ArrayList<RectangularPrism> prisms;
     private float baselength;
@@ -17,14 +18,30 @@ public class StepPyramid extends TriangleMesh {
     private float stepshrink;
     private boolean mirrored;
 
-    public StepPyramid(float baselength, float stepheight, float stepshrink, boolean mirrored){
+    public StepPyramid(Vector3f location, float baselength, float stepheight, float stepshrink, boolean mirrored){
         if (stepshrink <= 0)
             throw new IllegalArgumentException("StepPyramid: Invalid stepshrink. Values must be above zero.");
+        setPosition(location);
         this.baselength = baselength;
         this.stepheight = stepheight;
         this.stepshrink = stepshrink;
         this.mirrored = mirrored;
         prisms = new ArrayList<>();
+    }
+
+    @Override
+    public float getLength() {
+        return baselength;
+    }
+
+    @Override
+    public float getHeight() {
+        return prisms.size() * stepheight;
+    }
+
+    @Override
+    public float getWidth() {
+        return baselength;
     }
 
     @Override
@@ -93,6 +110,12 @@ public class StepPyramid extends TriangleMesh {
 
     public float getBaseRectHeight(){
         return stepheight;
+    }
+
+    public Vector3f getPositionalOffset(){
+        float heightComponent = getHeight() / 2.0f;
+        if (mirrored) heightComponent = 0;
+        return new Vector3f(0, heightComponent, 0);
     }
 
 }

@@ -1,6 +1,6 @@
 package World.Particles;
 
-import Shapes.Cylinder;
+import World.Shapes.Cylinder;
 import org.joml.Vector3f;
 
 public class Laser extends Particle{
@@ -9,14 +9,27 @@ public class Laser extends Particle{
         particleShape = new Cylinder(0.05f, 1.0f);
         particleShape.init();
 
-        //TODO: delete the new?
-        location = new Vector3f(emitterLocation);   //starts at the Emitter's location
-        direction = new Vector3f(spewDirection);
+        setPosition(emitterLocation);   //starts at the Emitter's location
+        setDirection(spewDirection);
 
-        velocity = new Vector3f(direction.mul(75.0f, new Vector3f()));
+        velocity = new Vector3f(getDirection().mul(75.0f, new Vector3f()));
         acceleration = new Vector3f(0);
 
         lifespan = 100;
     }
 
+    @Override
+    public float getLength() {
+        return particleShape.getLength();
+    }
+
+    @Override
+    public float getHeight() {
+        return particleShape.getHeight();
+    }
+
+    @Override
+    public float getWidth() {
+        return particleShape.getWidth();
+    }
 }

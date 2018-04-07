@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
 
 import java.nio.FloatBuffer;
@@ -21,6 +21,22 @@ public class RectangularPrism extends TriangleMesh {
         this.height = height;
     }
 
+    @Override
+    public float getLength() {
+        return length;
+    }
+
+    @Override
+    public float getHeight() {
+        return height;
+    }
+
+    @Override
+    public float getWidth() {
+        return width;
+    }
+
+    @Override
     public void init(){
         if (vao != 0) return;
 

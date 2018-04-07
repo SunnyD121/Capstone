@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Vector3f;
 
@@ -13,7 +13,7 @@ import java.util.HashMap;
  * Created by (User name) on 8/10/2017.
  * Sources used: http://blog.andreaskahler.com/2009/06/creating-icosphere-mesh-in-code.html
  */
-public class IcoSphere extends TriangleMesh {
+public class IcoSphere extends TriangleMesh implements CompositeShape{
 
     private float radius;
     private float depth;
@@ -42,6 +42,21 @@ public class IcoSphere extends TriangleMesh {
         this.depth = complexity;
         middlePointIndexCache = new HashMap<>();
         positions = new ArrayList<>();
+    }
+
+    @Override
+    public float getLength() {
+        return radius * 2.0f;
+    }
+
+    @Override
+    public float getHeight() {
+        return radius * 2.0f;
+    }
+
+    @Override
+    public float getWidth() {
+        return radius * 2.0f;
     }
 
     @Override

@@ -1,6 +1,6 @@
-package Shapes;
+package World.Shapes;
 
-import Core.TriangleMesh;
+import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Vector3f;
 
@@ -30,6 +30,17 @@ public class Prism extends TriangleMesh {
         init();
     }
 
+    @Override
+    public float getLength() {
+        return radius * 2.0f;
+    }
+
+    @Override
+    public float getWidth() {
+        return radius * 2.0f;
+    }
+
+    @Override
     public float getHeight(){
         return length;
     }

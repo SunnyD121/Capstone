@@ -49,8 +49,8 @@ public class GLListener implements GLEventListener {
     private long currentTime;
     private final int SHADOWFRAME = 1;
     private int shadowTex;
-    private final int SHADOWMAP_HEIGHT = 512;
-    private final int SHADOWMAP_WIDTH = 512;
+    private final int SHADOWMAP_WIDTH = 2048;
+    private final int SHADOWMAP_HEIGHT = 2048;
     private int shadowPassID, renderPassID;
 
     public GLListener(){
@@ -102,6 +102,8 @@ public class GLListener implements GLEventListener {
         gl.glBindFramebuffer(GL_FRAMEBUFFER, SHADOWFRAME);  //SHADOWFRAME = 1
         gl.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowTex, 0);
 
+        //NOTE: instead of SHADOWFRAME = 1, use framebufferobject.get(X) (if multiple framebuffers)
+
         /*  Ask Wolff about these lines:
         GLenum drawBuffers[] = {GL_NONE}
         glDrawBuffers(1, drawBuffers);
@@ -125,8 +127,9 @@ public class GLListener implements GLEventListener {
         pauseMenu = PauseMenu.getInstance();
 
         //More shadow stuff
-        shadowCamera = new Camera();
-        shadowCamera.orient(world.getSunlightDirection().mul(160), new Vector3f(0), new Vector3f(0,1,0));
+        shadowCamera = new Camera(Camera.ProjectionType.ORTHO);
+        //shadowCamera.orient(world.getSunlightDirection().mul(160), new Vector3f(0), new Vector3f(0,1,0));
+        shadowCamera.setOrtho(-100, 100, -100, 100, -100, 100);
         //shadowCamera.setViewVolume(50.0f,1.0f,1.0f,25.0f);        //EDIT: Do NOT use this line of code, breaks shadow map visual
         Matrix4f shadowBias = new Matrix4f(     //TODO: This might need to be transposed?
                 0.5f,0.0f,0.0f,0.0f,
@@ -134,11 +137,14 @@ public class GLListener implements GLEventListener {
                 0.0f,0.0f,0.5f,0.0f,
                 0.5f,0.5f,0.5f,1.0f);
         Matrix4f lightCoord = new Matrix4f();
-        shadowBias.mul(shadowCamera.getProjectionMatrix(), lightCoord);
-        lightCoord.mul(shadowCamera.getViewMatrix());
+        ////shadowBias.mul(shadowCamera.getProjectionMatrix(), lightCoord);
+        ////lightCoord.mul(shadowCamera.getViewMatrix());
+        shadowBias.mul(shadowCamera.getProjectionMatrix(), lightCoord);  //Projection
+        lightCoord.mul(new Matrix4f().lookAt(world.getSunlightDirection(), new Vector3f(0), new Vector3f(0,1,0)));  //View
 
+        //ShadowMatrix = (Bias * Projection) * WorldToEye
         shader.setUniform("ShadowMatrix", lightCoord);
-        shader.setUniform("ShadowMap", 0);  //sampler2D
+        shader.setUniform("shadowMap", 0);  //sampler2D
 
         //initial framerate won't be completely accurate, but subsequent updates should be.
         currentTime = System.currentTimeMillis();
@@ -155,19 +161,22 @@ public class GLListener implements GLEventListener {
     }
 
     private void generateShadows(){
-        shader.setUniform("WorldToEye", shadowCamera.getViewMatrix());
-        shader.setUniform("Projection", shadowCamera.getProjectionMatrix());    //TODO: use mat4.ortho()
+        //shader.setUniform("WorldToEye", shadowCamera.getViewMatrix());
+        shader.setUniform("WorldToEye", new Matrix4f().lookAt(world.getSunlightDirection(), new Vector3f(0), new Vector3f(0,1,0)));
+        shader.setUniform("Projection", shadowCamera.getProjectionMatrix());
+
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, SHADOWFRAME);
-        gl.glClear(GL_DEPTH_BUFFER_BIT);    //and the color bit too?
+        gl.glClear(GL_DEPTH_BUFFER_BIT);
         gl.glViewport(0,0,SHADOWMAP_WIDTH, SHADOWMAP_HEIGHT);
         int[] subroutinePass = new int[] {shadowPassID};
         gl.glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, IntBuffer.wrap(subroutinePass));
         gl.glEnable(GL_CULL_FACE);
-        gl.glCullFace(GL_FRONT);
+        gl.glCullFace(GL_FRONT);    //gets rid of Shadow Acne, but shadows now have holes in them from the culling.
         world.drawWorld(shader);    //separation of shadowed Objects and nonShadowed. drawWorld() vs render().
-        gl.glCullFace(GL_BACK);
+        gl.glCullFace(GL_BACK); //for normal rendering. disables frontface culling.
         gl.glFlush();
         //seeShadowMapImage(); System.exit(0);  //uncomment this only if you want to see the ShadowMap.
+
     }
 
     @Override
@@ -275,7 +284,7 @@ public class GLListener implements GLEventListener {
 
                 float minLightVal = min;
                 float scaleBy = (depthValues[depthBufferIndex] - minLightVal) / (1.0f - minLightVal);
-                float pixelValue = (1.0f - scaleBy) * 255;
+                float pixelValue = (scaleBy) * 255; //NOTE: to see reverse, (1 - scaleBy)
 
                 pixels[imageIndex] = pixelValue;  //R
                 pixels[imageIndex+1] = pixelValue;  //G
