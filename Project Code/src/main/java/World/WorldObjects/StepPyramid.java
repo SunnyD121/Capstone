@@ -1,7 +1,10 @@
-package World.Shapes;
+package World.WorldObjects;
 
 import Core.Shader;
+import World.AbstractShapes.RectangularPrism;
+import World.AbstractShapes.Triangle;
 import World.TriangleMesh;
+import World.WorldObjects.CompositeShape;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -10,7 +13,7 @@ import java.util.ArrayList;
 /**
  * Created by (User name) on 8/12/2017.
  */
-public class StepPyramid extends TriangleMesh implements CompositeShape{
+public class StepPyramid extends CompositeShape {
 
     private ArrayList<RectangularPrism> prisms;
     private float baselength;
@@ -61,6 +64,27 @@ public class StepPyramid extends TriangleMesh implements CompositeShape{
 
     }
 
+    @Override
+    void render(Shader shader) {
+        System.err.println("StepPyramind: Unused.");
+        System.exit(-1);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        int size = 0;
+        for(RectangularPrism p : prisms) size += p.getTriangles().length;
+        triangles = new Triangle[size];
+        ArrayList<Triangle[]> triArray = new ArrayList<>();
+        for (int i = 0; i < prisms.size(); i++) triArray.add(transformTriangleArray(prisms.get(i).getTriangles(), transformMap.get(prisms.get(i))));
+        int index = 0;
+        for (int i = 0; i < triArray.size(); i++) {
+            for (int j = index; j < triArray.get(i).length + index; j++) triangles[j] = triArray.get(i)[j - index];
+            index +=triArray.get(i).length;
+        }
+        return triangles;
+    }
+
     private void createPrisms(){
         float temp =  baselength;
         while (temp > 0){
@@ -84,6 +108,7 @@ public class StepPyramid extends TriangleMesh implements CompositeShape{
             stepUp.translate(0, i * stepheight, 0);
             stepUp = OTWcopy.mul(stepUp);
             shader.setUniform("ObjectToWorld", stepUp);
+            transformMap.put(prisms.get(i), stepUp);
             prisms.get(i).render();
 
         }
@@ -102,6 +127,7 @@ public class StepPyramid extends TriangleMesh implements CompositeShape{
             stepDown.translate(0, (i-limit) * -stepheight, 0);
             stepDown = OTWcopy.mul(stepDown);
             shader.setUniform("ObjectToWorld", stepDown);
+            transformMap.put(prisms.get(i), stepDown);
             prisms.get(i).render();
         }
         //reset ObjectToWorld

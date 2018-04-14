@@ -1,7 +1,9 @@
-package World.Particles;
+package World.WorldObjects.Particles;
 
+import Core.CollisionDetectionSystem.CollisionDetectionSystem;
 import Core.Shader;
-import World.Shapes.BillBoardQuad;
+import World.AbstractShapes.BillBoardQuad;
+import World.AbstractShapes.Triangle;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -32,6 +34,17 @@ public class Snowflake extends Particle {
         shader.setUniform("ObjectToWorld", O2W);
         //Guarenteed to be a billboard.
         particleShape.render(shader, new Vector3f(O2W.m30(), O2W.m31(), O2W.m32()), cameraPosition);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        return particleShape.getTriangles();
+    }
+
+    @Override
+    public void generateCollisionBox() {
+        System.err.println("Not implemented yet.");
+        System.exit(-1);
     }
 
     public void run(Shader shader, Matrix4f ObjectToWorld, Vector3f cameraPosition){

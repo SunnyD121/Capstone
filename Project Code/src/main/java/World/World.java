@@ -2,11 +2,12 @@ package World;
 
 import Core.*;
 import Core.CollisionDetectionSystem.CollisionDetectionSystem;
-import Core.CollisionDetectionSystem.FixedBoundingBox;
 import GUI.PauseMenu;
-import World.Particles.Particle;
-import World.Shapes.*;
-import World.Shapes.Rectangle;
+import World.AbstractShapes.*;
+import World.WorldObjects.Ground;
+import World.WorldObjects.Lamp;
+import World.WorldObjects.StepPyramid;
+import World.WorldObjects.Tree;
 import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 
@@ -285,14 +286,14 @@ public class World implements InputNotifiee {
         drawParticles(shader);
 
         //Test for colliding objects
-        CDS.testCollisions2();
-        CDS.drawBoundingBoxes(shader);
+        CDS.testCollisions();
+        CDS.drawBoundingBoxes(shader, false);
 
         //add gravity
         for (SceneEntity entity : worldObjects) if (entity.isAffectedByGravity) entity.move(GRAVITY);
 
         //check if player is out-of-bounds
-        if (player.getPosition().y < -5) killPlayer();
+        if (player.getPosition().y < -10) killPlayer();
 
         //poll for user input
         InputHandler.pollInput();   //there is value in doing this, because this gets called once per frame
@@ -622,12 +623,27 @@ public class World implements InputNotifiee {
 
 
     long timeCheck = 0;
+    Vector3f vel;
     @Override
     public void shoot(){
-        long timeNow = System.currentTimeMillis();
-        if (timeNow > timeCheck + 500) {     //if 500ms have passed since last laser was fired...
-            laserEmitter.addParticle();
-            timeCheck = timeNow;
+        boolean debug = false;
+        if (!debug) {
+            long timeNow = System.currentTimeMillis();
+            if (timeNow > timeCheck + 500) {     //if 500ms have passed since last laser was fired...
+                laserEmitter.addParticle();
+                timeCheck = timeNow;
+            }
+        }
+        else {
+            if (laserEmitter.particles.size() < 1) timeCheck = 0;
+            if (timeCheck == 0) {
+                laserEmitter.addParticle();
+                vel = laserEmitter.particles.get(0).getVelocity();
+                laserEmitter.particles.get(0).setVelocity(new Vector3f(0));
+                timeCheck++;
+            }
+            laserEmitter.particles.get(0).setLifespan(200);
+            laserEmitter.particles.get(0).move(vel.normalize());
         }
 
     }

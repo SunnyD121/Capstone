@@ -1,4 +1,4 @@
-package World.Shapes;
+package World.AbstractShapes;
 
 import World.TriangleMesh;
 import Utilities.Utilities;
@@ -43,17 +43,17 @@ public class Building extends TriangleMesh{
     public void init(){
         ArrayList<Float> points = new ArrayList<>();
         ArrayList<Float> normals = new ArrayList<>();
-        ArrayList<Integer> index = new ArrayList<>();
+        ArrayList<Integer> indices = new ArrayList<>();
 
         //side faces
-        buildFace(points, normals, index, 0,1);
-        buildFace(points, normals, index, 1,2);
-        buildFace(points, normals, index, 2,3);
-        buildFace(points, normals, index, 3,0);
+        buildFace(points, normals, indices, 0,1);
+        buildFace(points, normals, indices, 1,2);
+        buildFace(points, normals, indices, 2,3);
+        buildFace(points, normals, indices, 3,0);
 
         //top face
-        buildTop(points, normals, index, 0,1,2);
-        buildTop(points, normals, index, 0,2,3);
+        buildTop(points, normals, indices, 0,1,2);
+        buildTop(points, normals, indices, 0,2,3);
 
         float tex[] = {
                 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
@@ -63,12 +63,29 @@ public class Building extends TriangleMesh{
                 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
                 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f };
 
+
+        //Triangles, for use in collision detection
+        triangles = new Triangle[indices.size() / 3];
+        for (int i = 0; i < triangles.length; i++){
+            triangles[i] = new Triangle(
+                    new Vector3f(points.get(3*indices.get(3*i)), points.get(3*indices.get(3*i)+1), points.get(3*indices.get(3*i)+2)),
+                    new Vector3f(points.get(3*indices.get(3*i+1)), points.get(3*indices.get(3*i+1)+1), points.get(3*indices.get(3*i+1)+2)),
+                    new Vector3f(points.get(3*indices.get(3*i+2)), points.get(3*indices.get(3*i+2)+1), points.get(3*indices.get(3*i+2)+2))
+            );
+        }
+
+
         FloatBuffer p = Utilities.convertF(points);
         FloatBuffer n = Utilities.convertF(normals);
-        IntBuffer i = Utilities.convertI(index);
+        IntBuffer i = Utilities.convertI(indices);
         FloatBuffer textureBuf = GLBuffers.newDirectFloatBuffer(tex);
 
         initGpuVertexArrays(i, p, n, null, textureBuf);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        return triangles;
     }
 
     public void setData(Vector3f[] base, float[] height){
@@ -108,7 +125,7 @@ public class Building extends TriangleMesh{
         return max;
     }
 
-    private void buildFace(ArrayList<Float> points, ArrayList<Float> normals, ArrayList<Integer> index, int idx1, int idx2){
+    private void buildFace(ArrayList<Float> points, ArrayList<Float> normals, ArrayList<Integer> indices, int idx1, int idx2){
         int offset = points.size() / 3;
         Vector3f[] p = new Vector3f[4];
         p[0] = base[idx1];
@@ -132,15 +149,15 @@ public class Building extends TriangleMesh{
             normals.add(n.y);
             normals.add(n.z);
         }
-        index.add(offset + 0);
-        index.add(offset + 1);
-        index.add(offset + 2);
-        index.add(offset + 0);
-        index.add(offset + 2);
-        index.add(offset + 3);
+        indices.add(offset + 0);
+        indices.add(offset + 1);
+        indices.add(offset + 2);
+        indices.add(offset + 0);
+        indices.add(offset + 2);
+        indices.add(offset + 3);
     }
 
-    private void buildTop(ArrayList<Float> points, ArrayList<Float> normals, ArrayList<Integer> index, int idx1, int idx2, int idx3){
+    private void buildTop(ArrayList<Float> points, ArrayList<Float> normals, ArrayList<Integer> indices, int idx1, int idx2, int idx3){
         int offset = points.size() / 3;
 
         Vector3f[] p = new Vector3f[4];
@@ -165,9 +182,9 @@ public class Building extends TriangleMesh{
             normals.add(n.y);
             normals.add(n.z);
         }
-        index.add(offset + 0);
-        index.add(offset + 1);
-        index.add(offset + 2);
+        indices.add(offset + 0);
+        indices.add(offset + 1);
+        indices.add(offset + 2);
     }
 
     private Vector3f interpolatePosition(){

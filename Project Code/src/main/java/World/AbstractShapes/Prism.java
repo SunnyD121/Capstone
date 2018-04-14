@@ -1,4 +1,4 @@
-package World.Shapes;
+package World.AbstractShapes;
 
 import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
@@ -6,6 +6,7 @@ import org.joml.Vector3f;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 
 /**
  * Created by (User name) on 8/11/2017.
@@ -52,7 +53,7 @@ public class Prism extends TriangleMesh {
         float halflength = length / 2.0f;
         float[] points = new float[sides * 12 + 6];    //12: 3xyz * 4 objects (Prism 2 disk) + 6xyz (2 centers)
         float[] normals = new float[sides * 12 + 6];
-        int[] index = new int[sides * 12];
+        int[] indices = new int[sides * 12];
 
         float factor = 2 * (float)Math.PI / sides;
         //middle section
@@ -79,13 +80,13 @@ public class Prism extends TriangleMesh {
             normals[i * 6 + 4] = normal.y;
             normals[i * 6 + 5] = normal.z;
 
-            //indexes
-            index[i * 6] = (2 * i) % (2 * sides);
-            index[i * 6 + 1] = (2 * i + 2) % (2 * sides);
-            index[i * 6 + 2] = (2 * i + 1) % (2 * sides);
-            index[i * 6 + 3] = (2 * i + 2) % (2 * sides);
-            index[i * 6 + 4] = (2 * i + 3) % (2 * sides);
-            index[i * 6 + 5] = (2 * i + 1) % (2 * sides);
+            //indiceses
+            indices[i * 6] = (2 * i) % (2 * sides);
+            indices[i * 6 + 1] = (2 * i + 2) % (2 * sides);
+            indices[i * 6 + 2] = (2 * i + 1) % (2 * sides);
+            indices[i * 6 + 3] = (2 * i + 2) % (2 * sides);
+            indices[i * 6 + 4] = (2 * i + 3) % (2 * sides);
+            indices[i * 6 + 5] = (2 * i + 1) % (2 * sides);
         }
 
         int offset = sides * 6;    //so that we add to the end of the array, instead of overwriting.
@@ -101,9 +102,9 @@ public class Prism extends TriangleMesh {
             normals[i * 3 + offset + 1] = 0.0f;
             normals[i * 3 + offset + 2] = 1.0f;
 
-            index[i * 3 + offset + 0] = i + (sides * 2);
-            index[i * 3 + offset + 1] = (i + 1) % (sides) + (sides * 2);
-            index[i * 3 + offset + 2] = sides + (sides * 2);
+            indices[i * 3 + offset + 0] = i + (sides * 2);
+            indices[i * 3 + offset + 1] = (i + 1) % (sides) + (sides * 2);
+            indices[i * 3 + offset + 2] = sides + (sides * 2);
         }
         //Add center point (near)
         points[sides * 9 + 0] = 0.0f;
@@ -114,7 +115,7 @@ public class Prism extends TriangleMesh {
         normals[sides * 9 + 2] = 1.0f;
 
         offset += (sides * 3 + 3);
-        int index_offset = offset - 3;  //because of the above center point, point/normal increase, but index doesn't.
+        int indices_offset = offset - 3;  //because of the above center point, point/normal increase, but indices doesn't.
         //far cap
         for (int i = 0; i < sides; i++) {
             float angle = factor * i;
@@ -127,9 +128,9 @@ public class Prism extends TriangleMesh {
             normals[i * 3 + offset + 1] = 0.0f;
             normals[i * 3 + offset + 2] = -1.0f;
 
-            index[i * 3 + index_offset + 1] = i + (sides * 3) + 1;
-            index[i * 3 + index_offset + 0] = (i + 1) % (sides) + (sides * 3) + 1;
-            index[i * 3 + index_offset + 2] = sides + (sides * 3) + 1;
+            indices[i * 3 + indices_offset + 1] = i + (sides * 3) + 1;
+            indices[i * 3 + indices_offset + 0] = (i + 1) % (sides) + (sides * 3) + 1;
+            indices[i * 3 + indices_offset + 2] = sides + (sides * 3) + 1;
 
         }
         //Add center point (far)
@@ -141,12 +142,25 @@ public class Prism extends TriangleMesh {
         normals[sides * 12 + offset + 1] = 0.0f;
         normals[sides * 12 + offset + 2] = -1.0f;
 
-
+        //Triangles, for use in collision detection
+        triangles = new Triangle[indices.length/3];
+        for (int i = 0; i < triangles.length; i++){
+            triangles[i] = new Triangle(
+                    new Vector3f(points[3*indices[3*i]], points[3*indices[3*i]+1], points[3*indices[3*i]+2]),
+                    new Vector3f(points[3*indices[3*i+1]], points[3*indices[3*i+1]+1], points[3*indices[3*i+1]+2]),
+                    new Vector3f(points[3*indices[3*i+2]], points[3*indices[3*i+2]+1], points[3*indices[3*i+2]+2])
+            );
+        }
 
         FloatBuffer p = GLBuffers.newDirectFloatBuffer(points);
         FloatBuffer n = GLBuffers.newDirectFloatBuffer(normals);
-        IntBuffer e = GLBuffers.newDirectIntBuffer(index);
+        IntBuffer e = GLBuffers.newDirectIntBuffer(indices);
 
         initGpuVertexArrays(e, p, n, null, null);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        return triangles;
     }
 }

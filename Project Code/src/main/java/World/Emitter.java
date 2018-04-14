@@ -2,15 +2,15 @@ package World;
 
 import Core.CollisionDetectionSystem.CollisionDetectionSystem;
 import Core.Shader;
-import World.Particles.Laser;
-import World.Particles.Particle;
-import World.Particles.Snowflake;
+import Utilities.Utilities;
+import World.WorldObjects.Particles.Laser;
+import World.WorldObjects.Particles.Particle;
+import World.WorldObjects.Particles.Snowflake;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
-
-import Utilities.Utilities;
 
 import static World.Emitter.ParticleType.LASER;
 import static World.Emitter.ParticleType.SNOWFLAKE;
@@ -44,7 +44,7 @@ public class Emitter {
         World.addWorldObject(p);
 
         //add a collision box
-        CollisionDetectionSystem.getInstance().addCollisionBox(p, p.getPosition(), p.getHeight(), p.getLength(), p.getWidth(), null);
+        p.generateCollisionBox();
     }
 
     public void run(Shader shader, Vector3f location, Vector3f cameraPosition){

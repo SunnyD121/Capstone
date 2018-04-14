@@ -6,6 +6,7 @@ import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import sun.plugin2.os.windows.FLASHWINFO;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -248,6 +249,132 @@ public class Utilities {
         return max;
     }
 
+    public static Vector3f lineIntersect(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f p4){
+        //what a mess. But, it should check out.
+        //System.out.println("Testing Line Segment:");
+        //System.out.println(p1 +" to "+p2 + " against");
+        //System.out.println(p3 + " to "+p4);
+        float denom1 = (p2.y*p4.x - p2.y*p3.x - p1.y*p4.x + p1.y*p3.x - p2.x*p4.y + p2.x*p3.y + p1.x*p4.y - p1.x*p3.y);
+        float denom2 = (p2.z*p4.y - p2.z*p3.y - p1.z*p4.y + p1.z*p3.y - p2.y*p4.z + p2.y*p3.z + p1.y*p4.z - p1.y*p3.z);
+        float denom3 = (p2.z*p4.x - p2.z*p3.x - p1.z*p4.x + p1.z*p3.x - p2.x*p4.z + p2.x*p3.z + p1.x*p4.z - p1.x*p3.z);
+        if (denom1 == 0 && denom2 == 0 && denom3 == 0) {
+            if (collinearCheck(p1, p2, p3, p4))
+                return new Vector3f(1.0f / 0.0f, 1.0f / 0.0f, 1.0f / 0.0f);   //collinear, intersect is a set of points (not necessarily infinite)
+            else return null;   //simply parallel.
+        }
+        float t1 = (p2.x*p3.y - p2.x*p1.y - p1.x*p3.y + p1.x*p1.y - p2.y*p3.x + p2.y*p1.x + p1.y*p3.x - p1.y*p1.x) / denom1;
+        float t2 = (p2.y*p3.z - p2.y*p1.z - p1.y*p3.z + p1.y*p1.z - p2.z*p3.y + p2.z*p1.y + p1.z*p3.y - p1.z*p1.y) / denom2;
+        float t3 = (p2.x*p3.z - p2.x*p1.z - p1.x*p3.z + p1.x*p1.z - p2.z*p3.x + p2.z*p1.x + p1.z*p3.x - p1.z*p1.x) / denom3;
+
+        //System.out.println("t1: "+t1);
+        //System.out.println("t2: "+t2);
+        //System.out.println("t3: "+t3);
+
+        float t = Float.NaN;
+
+        //Check: 0 <= t1==t2==t3 <= 1 and by extension t1,t2,t3 is real
+        if (Float.isFinite(t1)){    //t1 finite, t1,t2 ?
+            t = t1;
+            if (Float.isFinite(t2) && Float.isFinite(t3)){  //t1,t2,t3 finite
+                if (t1 == t2 && t1 == t3){
+                    if (t1 > 1 || t1 < 0) return null;    //since equal, checking t1 for if inbounds, checks for all
+                }
+                else return null;
+            }
+            else if (Float.isFinite(t2)){   //t1,t2 finite, t3 nonfinite
+                if (t1 == t2){
+                    if (t1 > 1 || t1 < 0) return null;
+                }
+                else return null;
+            }
+            else if (Float.isFinite(t3)){  //t1,t3 finite, t2 nonfinite
+                if (t1 == t3){
+                    if (t1 > 1 || t1 < 0) return null;
+                }
+                else return null;
+            }
+            else {  //t1 finite, t2,t3 nonfinite
+                if (t1 > 1 || t1 < 0) return null;
+            }
+        }
+        else if (Float.isFinite(t2)){   //t1 nonfinite, t2 finite, t3 ?
+            t = t2;
+            if (Float.isFinite(t3)){    //t2,t3 finite, t1 nonfinite
+                if (t2 == t3){
+                    if (t2 > 1 || t2 < 0) return null;
+                }
+                else return null;
+            }
+            else {  //t2 finite, t1,t3 nonfinite
+                if (t2 > 1 || t2 < 0) return null;
+            }
+        }
+        else if (Float.isFinite(t3)){   //t3 finite, t1,t2 nonfinite
+            t = t3;
+            if (t3 > 1 || t3 < 0) return null;
+        }
+        else {  //t1,t2,t3 nonfinite
+            return null;
+        }
+
+
+
+        float s = ( p3.x-p1.x + t*(p4.x-p3.x) ) / (p2.x - p1.x);
+        if (s > 1 || s < 0) return null;
+
+        float s2 = ( p3.y-p1.y + t*(p4.y-p3.y) ) / (p2.y - p1.y);
+        float s3 = ( p3.z-p1.z + t*(p4.z-p3.z) ) / (p2.z - p1.z);
+
+        //System.out.println("s: "+s);
+        //System.out.println("s2: "+s2);
+        //System.out.println("s3: "+s3);
+
+
+        Vector3f temp = new Vector3f(); p2.sub(p1, temp);
+        temp.mul(s, temp);
+        temp.add(p1,temp);
+        //System.out.println("Intersection at: " + temp);
+        return temp;
+    }
+
+    private static boolean collinearCheck(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f p4){
+        //check if point 3 is collinear
+        float scalarX3 = (p3.x-p1.x) / (p2.x-p1.x);
+        float scalarY3 = (p3.y-p1.y) / (p2.y-p1.y);
+        float scalarZ3 = (p3.z-p1.z) / (p2.z-p1.z);
+
+        if (!Float.isFinite(scalarX3)){
+            if (Float.isFinite(scalarY3) && Float.isFinite(scalarZ3)) if (scalarY3 != scalarZ3) return false;
+        }
+        else if (!Float.isFinite(scalarY3)){
+            if (Float.isFinite(scalarZ3)) if (scalarX3 != scalarZ3) return false;
+        }
+        else if (!Float.isFinite(scalarZ3)){
+            if (scalarX3 != scalarY3) return false;
+        }
+        if (Float.isFinite(scalarX3) && Float.isFinite(scalarY3) && Float.isFinite(scalarZ3))
+            if (!((scalarX3 == scalarY3) && (scalarX3 == scalarZ3) && (scalarY3 == scalarZ3))) return false;
+
+        //check if point 4 is also collinear
+        float scalarX4 = (p4.x-p1.x) / (p2.x-p1.x);
+        float scalarY4 = (p4.y-p1.y) / (p2.y-p1.y);
+        float scalarZ4 = (p4.z-p1.z) / (p2.z-p1.z);
+
+        if (!Float.isFinite(scalarX4)){
+            if (Float.isFinite(scalarY4) && Float.isFinite(scalarZ4)) if (scalarY4 != scalarZ4) return false;
+        }
+        else if (!Float.isFinite(scalarY4)){
+            if (Float.isFinite(scalarZ4)) if (scalarX4 != scalarZ4) return false;
+        }
+        else if (!Float.isFinite(scalarZ4)){
+            if (scalarX4 != scalarY4) return false;
+        }
+        if (Float.isFinite(scalarX4) && Float.isFinite(scalarY4) && Float.isFinite(scalarZ4))
+            if (!((scalarX4 == scalarY4) && (scalarX4 == scalarZ4) && (scalarY4 == scalarZ4))) return false;
+
+        return true;
+    }
+
     public static Matrix4f addDistance(Vector3f change, Matrix4f original){
         original.m30(original.m30() + change.x);
         original.m31(original.m31() + change.y);
@@ -273,6 +400,19 @@ public class Utilities {
         Vector3f n = new Vector3f();
         u.cross(v, n);
         return n;
+    }
+
+    public static boolean boxLineIntersection(BoundingBox box, Vector3f A, Vector3f B){
+        /*
+        //if the line is outside the box
+        if (B.x < box.getMinPoint().x && A.x < box.getMinPoint().x) return false;
+        if (B.x > box.getMaxPoint().x && A.x > box.getMaxPoint().x) return false;
+        if (B.y < box.getMinPoint().y && A.y < box.getMinPoint().y) return false;
+        if (B.y < box.getMaxPoint().y && A.y < box.getMaxPoint().y) return false;
+        if (B.z < box.getMinPoint().z && A.z < box.getMinPoint().z) return false;
+        if (B.z < box.getMaxPoint().z && A.z < box.getMaxPoint().z) return false;
+        */
+        return true;
     }
 
     private static void error(String msg){

@@ -1,6 +1,7 @@
-package World.Shapes;
+package World.AbstractShapes;
 
 import World.TriangleMesh;
+import World.WorldObjects.CompositeShape;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Vector3f;
 
@@ -13,7 +14,7 @@ import java.util.HashMap;
  * Created by (User name) on 8/10/2017.
  * Sources used: http://blog.andreaskahler.com/2009/06/creating-icosphere-mesh-in-code.html
  */
-public class IcoSphere extends TriangleMesh implements CompositeShape{
+public class IcoSphere extends TriangleMesh {
 
     private float radius;
     private float depth;
@@ -24,7 +25,7 @@ public class IcoSphere extends TriangleMesh implements CompositeShape{
      */
     private HashMap<Long, Integer> middlePointIndexCache;
     private ArrayList<Vector3f> positions;  //consider using Float[3] instead
-    private int[] elements;
+    private int[] indices;
     private float[] points;
     private float[] normals;
 
@@ -131,7 +132,7 @@ public class IcoSphere extends TriangleMesh implements CompositeShape{
         //TODO: Normals are incorrect.
         points = new float[faces.size() * 9];
         normals = new float[faces.size() * 9];
-        elements = new int[faces.size() * 3];
+        indices = new int[faces.size() * 3];
 
 
         for (int i = 0; i < faces.size(); i++) {
@@ -142,7 +143,7 @@ public class IcoSphere extends TriangleMesh implements CompositeShape{
             normals[i * 9 + 0] = positions.get(vertex.v1).x;
             normals[i * 9 + 1] = positions.get(vertex.v1).y;
             normals[i * 9 + 2] = positions.get(vertex.v1).z;;
-            elements[i * 3 + 0] = i * 3 + 0;
+            indices[i * 3 + 0] = i * 3 + 0;
 
             points[i * 9 + 3] = positions.get(vertex.v2).x;
             points[i * 9 + 4] = positions.get(vertex.v2).y;
@@ -150,7 +151,7 @@ public class IcoSphere extends TriangleMesh implements CompositeShape{
             normals[i * 9 + 3] = positions.get(vertex.v2).x;
             normals[i * 9 + 4] = positions.get(vertex.v2).y;
             normals[i * 9 + 5] = positions.get(vertex.v2).z;
-            elements[i * 3 + 1] = i * 3 + 1;
+            indices[i * 3 + 1] = i * 3 + 1;
 
             points[i * 9 + 6] = positions.get(vertex.v3).x;
             points[i * 9 + 7] = positions.get(vertex.v3).y;
@@ -158,13 +159,28 @@ public class IcoSphere extends TriangleMesh implements CompositeShape{
             normals[i * 9 + 6] = positions.get(vertex.v3).x;
             normals[i * 9 + 7] = positions.get(vertex.v3).y;
             normals[i * 9 + 8] = positions.get(vertex.v3).z;
-            elements[i * 3 + 2] = i * 3 + 2;
+            indices[i * 3 + 2] = i * 3 + 2;
         }
 
-        IntBuffer e = GLBuffers.newDirectIntBuffer(elements);
+        triangles = new Triangle[indices.length/3];
+        for (int i = 0; i < triangles.length; i++){
+            triangles[i] = new Triangle(
+                    new Vector3f(points[3*indices[3*i]], points[3*indices[3*i]+1], points[3*indices[3*i]+2]),
+                    new Vector3f(points[3*indices[3*i+1]], points[3*indices[3*i+1]+1], points[3*indices[3*i+1]+2]),
+                    new Vector3f(points[3*indices[3*i+2]], points[3*indices[3*i+2]+1], points[3*indices[3*i+2]+2])
+            );
+        }
+
+
+        IntBuffer e = GLBuffers.newDirectIntBuffer(indices);
         FloatBuffer p = GLBuffers.newDirectFloatBuffer(points);
         FloatBuffer n = GLBuffers.newDirectFloatBuffer(normals);
         initGpuVertexArrays(e, p, n, null, null);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        return triangles;
     }
 
     private int addVertex(float x, float y, float z){

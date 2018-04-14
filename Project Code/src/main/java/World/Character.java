@@ -1,7 +1,7 @@
 package World;
 
 import Core.Shader;
-import World.Shapes.CharacterModel;
+import World.WorldObjects.CharacterModel;
 import org.joml.Vector3f;
 
 /**

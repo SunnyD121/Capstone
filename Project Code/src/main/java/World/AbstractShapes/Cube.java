@@ -1,7 +1,8 @@
-package World.Shapes;
+package World.AbstractShapes;
 
 import World.TriangleMesh;
 import com.jogamp.opengl.util.GLBuffers;
+import org.joml.Vector3f;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -40,7 +41,7 @@ public class Cube extends TriangleMesh {
         }
         float halfside = sideLength * 0.5f;
 
-        float[] vertices = {
+        float[] points = {
                 // Front
                 -halfside,-halfside,halfside,  halfside,-halfside,halfside,   halfside,halfside,halfside,   -halfside,halfside,halfside,
                 // Right
@@ -77,7 +78,7 @@ public class Cube extends TriangleMesh {
                 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f
 
         };
-        int[] index = {
+        int[] indices = {
                 0,1,2,0,2,3,
                 4,5,6,4,6,7,
                 8,9,10,8,10,11,
@@ -85,12 +86,43 @@ public class Cube extends TriangleMesh {
                 16,17,18,16,18,19,
                 20,21,22,20,22,23
         };
+        
+        
+        /*
+        //This is just the code to see how it's done.
+        for (int i = 0; i < triangles.length; i++){
+            int p1 = indices[3*i];
+            int p2 = indices[3*i+1];
+            int p3 = indices[3*i+2];
+            Triangle t = new Triangle(
+                    new Vector3f(points[3*p1], points[3*p1+1], points[3*p1+2]),
+                    new Vector3f(points[3*p2], points[3*p2+1], points[3*p2+2]),
+                    new Vector3f(points[3*p3], points[3*p3+1], points[3*p3+2])
+            );
+            triangles[i] = t;
+        }
+        */
 
-        IntBuffer orderBuf = GLBuffers.newDirectIntBuffer(index);
-        FloatBuffer vertexBuf = GLBuffers.newDirectFloatBuffer(vertices);
+        //Triangles, for use in collision detection
+        triangles = new Triangle[indices.length/3];
+        for (int i = 0; i < triangles.length; i++){
+            triangles[i] = new Triangle(
+                    new Vector3f(points[3*indices[3*i]], points[3*indices[3*i]+1], points[3*indices[3*i]+2]),
+                    new Vector3f(points[3*indices[3*i+1]], points[3*indices[3*i+1]+1], points[3*indices[3*i+1]+2]),
+                    new Vector3f(points[3*indices[3*i+2]], points[3*indices[3*i+2]+1], points[3*indices[3*i+2]+2])
+            );
+        }
+
+        IntBuffer orderBuf = GLBuffers.newDirectIntBuffer(indices);
+        FloatBuffer vertexBuf = GLBuffers.newDirectFloatBuffer(points);
         FloatBuffer normalBuf = GLBuffers.newDirectFloatBuffer(normals);
         FloatBuffer textureBuf = GLBuffers.newDirectFloatBuffer(tex);
 
         initGpuVertexArrays(orderBuf, vertexBuf, normalBuf, null, textureBuf);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        return triangles;
     }
 }

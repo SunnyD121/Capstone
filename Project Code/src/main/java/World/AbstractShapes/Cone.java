@@ -1,4 +1,4 @@
-package World.Shapes;
+package World.AbstractShapes;
 
 import Core.Shader;
 import World.TriangleMesh;
@@ -52,7 +52,7 @@ public class Cone extends TriangleMesh {
 
         float[] points = new float[6 * slices];
         float[] normals = new float[6 * slices];
-        int[] index = new int[3 * slices];
+        int[] indices = new int[3 * slices];
 
         float halfheight = height / 2.0f;
         float factor = 2 * (float)Math.PI / slices;
@@ -101,16 +101,40 @@ public class Cone extends TriangleMesh {
             normals[i * 6 + 5] = normal.z;
 
             //indices
-            index[i * 3] = 2 * i;
-            index[i * 3 + 1] = (2 * (i + 1)) % (2 * slices);
-            index[i * 3 + 2] = 2 * i + 1;
+            indices[i * 3] = 2 * i;
+            indices[i * 3 + 1] = (2 * (i + 1)) % (2 * slices);
+            indices[i * 3 + 2] = 2 * i + 1;
         }
+
+        //Triangles, for use in collision detection
+        triangles = new Triangle[indices.length/3];
+        for (int i = 0; i < triangles.length; i++){
+            triangles[i] = new Triangle(
+                    new Vector3f(points[3*indices[3*i]], points[3*indices[3*i]+1], points[3*indices[3*i]+2]),
+                    new Vector3f(points[3*indices[3*i+1]], points[3*indices[3*i+1]+1], points[3*indices[3*i+1]+2]),
+                    new Vector3f(points[3*indices[3*i+2]], points[3*indices[3*i+2]+1], points[3*indices[3*i+2]+2])
+            );
+        }
+        
         FloatBuffer p = GLBuffers.newDirectFloatBuffer(points);
         FloatBuffer n = GLBuffers.newDirectFloatBuffer(normals);
-        IntBuffer e = GLBuffers.newDirectIntBuffer(index);
+        IntBuffer e = GLBuffers.newDirectIntBuffer(indices);
 
         initGpuVertexArrays(e, p, n, null, null);
     }
+
+    @Override
+    public Triangle[] getTriangles() {
+        if (!capped)
+            return triangles;
+        else{
+            System.err.println("Cone.getTriangles(): Not implemented currently.");
+            System.exit(-1);
+            return null;    //ha-ha return after an exit call...
+        }
+
+    }
+
     public void setHeight(float newheight){
         height = newheight;
         init();

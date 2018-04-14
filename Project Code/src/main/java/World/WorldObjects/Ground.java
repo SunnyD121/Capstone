@@ -1,6 +1,7 @@
-package World.Shapes;
+package World.WorldObjects;
 
-import World.SceneEntity;
+import World.AbstractShapes.Rectangle;
+import World.AbstractShapes.Triangle;
 import World.TriangleMesh;
 import org.joml.Vector3f;
 
@@ -11,6 +12,11 @@ public class Ground extends TriangleMesh {
     public Ground(Vector3f v1, Vector3f v2, Vector3f v3, Vector3f v4){
         r = new Rectangle(v1,v2,v3,v4);
         setPosition(r.getPosition());
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        return r.getTriangles();
     }
 
     @Override

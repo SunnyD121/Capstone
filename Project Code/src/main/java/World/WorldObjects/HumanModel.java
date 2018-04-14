@@ -1,10 +1,13 @@
-package World.Shapes;
+package World.WorldObjects;
 
 import Core.Shader;
+import World.AbstractShapes.Cylinder;
+import World.AbstractShapes.IcoSphere;
+import World.AbstractShapes.Triangle;
+import World.WorldObjects.CharacterModel;
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
-public class AbstractHuman extends CharacterModel {
+public class HumanModel extends CharacterModel {
     private Cylinder leftArm, rightArm, body, leftLeg, rightLeg;
     private IcoSphere head, leftHand, rightHand;
     private float height;
@@ -18,7 +21,7 @@ public class AbstractHuman extends CharacterModel {
     private final float ARM_THICKNESS = BODY_THICKNESS/3.5f;
     private final float LEG_THICKNESS = BODY_THICKNESS/2;
 
-    public AbstractHuman(float height){
+    public HumanModel(float height){
         this.height = height;
         leftArm = new Cylinder(ARM_THICKNESS, height * ARM_FACTOR);
         rightArm = new Cylinder(ARM_THICKNESS, height * ARM_FACTOR);
@@ -62,7 +65,7 @@ public class AbstractHuman extends CharacterModel {
 
     @Override
     public void render() {
-        throw new IllegalArgumentException("Don't call AbstractHuman.render(). Call AbstractHuman.render(Shader, Matrix4f)");
+        throw new IllegalArgumentException("Don't call HumanModel.render(). Call HumanModel.render(Shader, Matrix4f)");
     }
 
     public void render(Shader shader, Matrix4f O2W){
@@ -70,6 +73,7 @@ public class AbstractHuman extends CharacterModel {
         /* render body */
         O2W.rotateX((float)Math.toRadians(-90), temp);
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(body, temp);
         body.render();
 
         /* render arms */
@@ -81,11 +85,13 @@ public class AbstractHuman extends CharacterModel {
         temp.rotate((float)Math.toRadians(angle), 1,0,0);
         temp.translate(0,0,-0.5f);
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(leftArm, temp);
         leftArm.render();
 
         O2W.translate(-(BODY_THICKNESS + (ARM_THICKNESS * 0.25f)), height * (BODY_FACTOR/2 - ARM_FACTOR/2), 0, temp);
         temp.translate(0,ARM_FACTOR/2.0f,height * ARM_FACTOR / 2.0f);
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(rightArm, temp);
         rightArm.render();
 
         /* render legs */
@@ -96,6 +102,7 @@ public class AbstractHuman extends CharacterModel {
         temp.rotate((float)Math.toRadians(angle), 1, 0, 0);
         temp.translate(0,0,-(height * LEG_FACTOR/2.0f));
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(leftLeg, temp);
         leftLeg.render();
 
         O2W.translate(BODY_THICKNESS/2,-height * (BODY_FACTOR/2 + LEG_FACTOR/2), 0, temp);
@@ -105,11 +112,13 @@ public class AbstractHuman extends CharacterModel {
         temp.rotate((float)Math.toRadians(-angle), 1, 0, 0);
         temp.translate(0,0,-(height * LEG_FACTOR/2.0f));
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(rightLeg, temp);
         rightLeg.render();
 
         /* render head */
         O2W.translate(0, height * (BODY_FACTOR/2 + HEAD_FACTOR), 0, temp);
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(head, temp);
         head.render();
 
         /* render hands */
@@ -122,12 +131,59 @@ public class AbstractHuman extends CharacterModel {
         temp.rotate((float)Math.toRadians(angle), 1,0,0);
         temp.translate(0,0,-0.5f - (ARM_FACTOR * height/2));
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(leftHand, temp);
         leftHand.render();
 
         O2W.translate(-(BODY_THICKNESS + (ARM_THICKNESS * 0.25f)), height * (BODY_FACTOR/2 - ARM_FACTOR/2), 0, temp);
         temp.translate(0,ARM_FACTOR/2.0f,height*ARM_FACTOR);
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(rightHand, temp);
         rightHand.render();
     }
 
+    @Override
+    void render(Shader shader) {
+        System.err.println("HumanModel.java: Unused.");
+        System.exit(-1);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        triangles = new Triangle[
+                head.getTriangles().length
+                + body.getTriangles().length
+                + leftArm.getTriangles().length
+                + leftHand.getTriangles().length
+                + rightArm.getTriangles().length
+                + rightHand.getTriangles().length
+                + leftLeg.getTriangles().length
+                + rightLeg.getTriangles().length];
+
+        Triangle[] headTri = transformTriangleArray(head.getTriangles(), transformMap.get(head));
+        Triangle[] bodyTri = transformTriangleArray(body.getTriangles(), transformMap.get(body));
+        Triangle[] leftArmTri = transformTriangleArray(leftArm.getTriangles(), transformMap.get(leftArm));
+        Triangle[] leftHandTri = transformTriangleArray(leftHand.getTriangles(), transformMap.get(leftHand));
+        Triangle[] rightArmTri = transformTriangleArray(rightArm.getTriangles(), transformMap.get(rightArm));
+        Triangle[] rightHandTri = transformTriangleArray(rightHand.getTriangles(), transformMap.get(rightHand));
+        Triangle[] leftLegTri = transformTriangleArray(leftLeg.getTriangles(), transformMap.get(leftLeg));
+        Triangle[] rightLegTri = transformTriangleArray(rightLeg.getTriangles(), transformMap.get(rightLeg));
+        int index = 0;
+        for (int i = index; i < headTri.length; i++) triangles[i] = headTri[i];
+        index += headTri.length;
+        for (int i = index; i < bodyTri.length+index; i++) triangles[i] = bodyTri[i-index];
+        index += bodyTri.length;
+        for (int i = index; i < leftArmTri.length+index; i++) triangles[i] = leftArmTri[i-index];
+        index += leftArmTri.length;
+        for (int i = index; i < leftHandTri.length+index; i++) triangles[i] = leftHandTri[i-index];
+        index += leftHandTri.length;
+        for (int i = index; i < rightArmTri.length+index; i++) triangles[i] = rightArmTri[i-index];
+        index += rightArmTri.length;
+        for (int i = index; i < rightHandTri.length+index; i++) triangles[i] = rightHandTri[i-index];
+        index += rightHandTri.length;
+        for (int i = index; i < leftLegTri.length+index; i++) triangles[i] = leftLegTri[i-index];
+        index += leftLegTri.length;
+        for (int i = index; i < rightLegTri.length+index; i++) triangles[i] = rightLegTri[i-index];
+        //index += rightLegTri.length;
+        return triangles;
+    }
 }

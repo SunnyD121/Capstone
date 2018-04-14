@@ -1,7 +1,8 @@
 package World;
 
 import Core.Shader;
-import World.Shapes.AbstractHuman;
+import World.AbstractShapes.Triangle;
+import World.WorldObjects.HumanModel;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -19,19 +20,19 @@ public class Player extends Character {
     public Player(Vector3f position, Vector3f direction){
         this.position = position;
         this.direction = direction.normalize();
-        this.model = new AbstractHuman(height);
+        this.model = new HumanModel(height);
         this.isAffectedByGravity = true;
     }
     public Player(Vector3f direction){
         this.position = new Vector3f(0,0,0);
         this.direction = direction.normalize();
-        this.model = new AbstractHuman(height);
+        this.model = new HumanModel(height);
         this.isAffectedByGravity = true;
     }
     public Player(){
         this.position = new Vector3f(0,0,0);
         this.direction = new Vector3f(0,0,1);
-        this.model = new AbstractHuman(height);
+        this.model = new HumanModel(height);
         this.isAffectedByGravity = true;
     }
 
@@ -61,6 +62,11 @@ public class Player extends Character {
         material.setUniforms(shader);
 
         model.render(shader, m);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        return model.getTriangles();
     }
 
     public float getLength(){

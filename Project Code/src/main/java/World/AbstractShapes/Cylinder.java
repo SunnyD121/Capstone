@@ -1,4 +1,4 @@
-package World.Shapes;
+package World.AbstractShapes;
 
 import World.TriangleMesh;
 
@@ -13,6 +13,11 @@ public class Cylinder extends TriangleMesh {
         int sides = (int)(radius * 40);
         if (sides < 10) sides = 20;
         p = new Prism(radius, height, sides);
+    }
+
+    @Override
+    public Triangle[] getTriangles() {
+        return p.getTriangles();
     }
 
     public void setHeight(float newHeight){

@@ -1,4 +1,4 @@
-package World.Shapes;
+package World.AbstractShapes;
 
 import World.TriangleMesh;
 import Utilities.Utilities;
@@ -43,7 +43,7 @@ public class Rectangle extends TriangleMesh {
 
         float[] points = new float[12];
         float[] normals = new float[12];
-        int[] elements = new int[6];
+        int[] indices = new int[6];
 
         Vector3f a = new Vector3f();
         Vector3f b = new Vector3f();
@@ -59,24 +59,38 @@ public class Rectangle extends TriangleMesh {
             normals[i * 3 + 1] = norm.y;
             normals[i * 3 + 2] = norm.z;
         }
-        elements[0] = 0;
-        elements[1] = 1;
-        elements[2] = 2;
-        elements[3] = 0;
-        elements[4] = 2;
-        elements[5] = 3;
+        indices[0] = 0;
+        indices[1] = 1;
+        indices[2] = 2;
+        indices[3] = 0;
+        indices[4] = 2;
+        indices[5] = 3;
 
         float[] tex = {0.0f, 0.0f, 5.0f, 0.0f, 5.0f, 5.0f, 0.0f, 5.0f};
 
+        //Triangles, for use in collision detection
+        triangles = new Triangle[indices.length/3];
+        for (int i = 0; i < triangles.length; i++){
+            triangles[i] = new Triangle(
+                    new Vector3f(points[3*indices[3*i]], points[3*indices[3*i]+1], points[3*indices[3*i]+2]),
+                    new Vector3f(points[3*indices[3*i+1]], points[3*indices[3*i+1]+1], points[3*indices[3*i+1]+2]),
+                    new Vector3f(points[3*indices[3*i+2]], points[3*indices[3*i+2]+1], points[3*indices[3*i+2]+2])
+            );
+        }
+
+
         FloatBuffer p = GLBuffers.newDirectFloatBuffer(points);
         FloatBuffer n = GLBuffers.newDirectFloatBuffer(normals);
-        IntBuffer e = GLBuffers.newDirectIntBuffer(elements);
+        IntBuffer e = GLBuffers.newDirectIntBuffer(indices);
         FloatBuffer t = GLBuffers.newDirectFloatBuffer(tex);
 
         initGpuVertexArrays(e, p, n, null, t);
     }
 
-
+    @Override
+    public Triangle[] getTriangles() {
+        return triangles;
+    }
 
     private void setVertexData(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f p4){
         p[0] = p1;

@@ -1,20 +1,13 @@
 package Core;
 
-import Trash.UserInputConfig;
-import Utilities.Utilities;
+import Core.CollisionDetectionSystem.CollisionDetectionSystem;
 import com.jogamp.newt.event.WindowAdapter;
 import com.jogamp.newt.event.WindowEvent;
 import com.jogamp.newt.opengl.GLWindow;
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.util.FPSAnimator;
-import org.joml.Matrix4f;
 import org.joml.Vector3f;
-
-import javax.rmi.CORBA.Util;
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.Comparator;
 
 public class Main {
 
@@ -25,7 +18,6 @@ public class Main {
 
     public static void main(String[] args) {
         function(args);
-
     }
     public static void function(String [] args){
         // Set the profile to 4.0 core

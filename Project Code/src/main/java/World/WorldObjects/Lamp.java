@@ -1,18 +1,26 @@
-package World.Shapes;
+package World.WorldObjects;
 
 import Core.Shader;
+import World.AbstractShapes.Cylinder;
+import World.AbstractShapes.IcoSphere;
+import World.AbstractShapes.Triangle;
 import World.Material;
+import World.SceneEntity;
 import World.TriangleMesh;
+import World.WorldObjects.CompositeShape;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-public class Lamp extends TriangleMesh implements CompositeShape {
+import java.util.HashMap;
+
+public class Lamp extends CompositeShape {
 
     private Cylinder cyl;
     private IcoSphere ico;
     private float lampHeight;
     private Vector3f location;
+
 
     public Lamp(Cylinder cyl, IcoSphere ico, Vector4f data){
         this.cyl = cyl;
@@ -75,6 +83,7 @@ public class Lamp extends TriangleMesh implements CompositeShape {
         forCylinders.translate(0,cyl.getHeight()/2.0f, 0);
         forCylinders.mul(rotation, temp);
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(cyl, temp);
         cyl.render();
 
         //draw Lamp bulb
@@ -87,7 +96,18 @@ public class Lamp extends TriangleMesh implements CompositeShape {
         m.setUniforms(shader);
         forSpheres.translate(0, cyl.getHeight(), 0, temp);
         shader.setUniform("ObjectToWorld", temp);
+        transformMap.put(ico, temp);
         ico.render();
+    }
+
+    @Override
+    public Triangle[] getTriangles(){
+        triangles = new Triangle[cyl.getTriangles().length + ico.getTriangles().length];
+        Triangle[] cylTri = transformTriangleArray(cyl.getTriangles(), transformMap.get(cyl));
+        Triangle[] icoTri = transformTriangleArray(ico.getTriangles(), transformMap.get(ico));
+        for (int i = 0; i < cylTri.length; i++) triangles[i] = cylTri[i];
+        for (int i = cylTri.length; i < icoTri.length+cylTri.length; i++) triangles[i] = icoTri[i-cylTri.length];
+        return triangles;
     }
 
     public Vector3f getPositionalOffset() {

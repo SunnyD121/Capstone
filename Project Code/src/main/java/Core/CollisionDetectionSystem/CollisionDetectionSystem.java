@@ -4,16 +4,19 @@ import Core.Shader;
 import Utilities.BiMap;
 import Utilities.Utilities;
 import Utilities.BinaryTree;
-import World.Particles.Laser;
-import World.Particles.Particle;
-import World.Player;
-import World.Shapes.Building;
+import World.AbstractShapes.Triangle;
+
+import World.WorldObjects.Particles.Laser;
+import World.WorldObjects.Particles.Particle;
+import World.AbstractShapes.Building;
 import World.Character;
 import World.SceneEntity;
 
-import World.Shapes.Ground;
-import jogamp.graph.font.typecast.ot.Fixed;
+import World.WorldObjects.Ground;
+import org.joml.Matrix3x2f;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 
 import java.util.ArrayList;
 
@@ -26,11 +29,14 @@ public class CollisionDetectionSystem {
     //efficiency: categorizing into subsets the objects
     static BiMap<BoundingBox, SceneEntity> map;
     static BinaryTree<FixedBoundingBox> bTree;
+    ArrayList<BoundingBox> boxesToHighlight;
+    FixedBoundingBox groundBox;
 
     private static CollisionDetectionSystem singleton;
 
     private CollisionDetectionSystem(){
         map = new BiMap<BoundingBox, SceneEntity>();
+        boxesToHighlight = new ArrayList<>();
     }
 
     public static CollisionDetectionSystem getInstance(){
@@ -62,6 +68,7 @@ public class CollisionDetectionSystem {
     }
 
     public static BoundingBox mergeMany(BoundingBox...group){
+        if (group.length == 1) return group[0]; //reuse Box, since it's around a SceneEntity (doesn't screw up mapping)
         float[] mins_x = new float[group.length];
         float[] maxes_x = new float[group.length];
         float[] mins_y = new float[group.length];
@@ -106,20 +113,19 @@ public class CollisionDetectionSystem {
         FixedBoundingBox[] tempArray = new FixedBoundingBox[fixedBoxHierarchy.size()];
         fixedBoxHierarchy.toArray(tempArray);
         bTree = new BinaryTree<FixedBoundingBox>((FixedBoundingBox)mergeMany(tempArray));
+        groundBox = findGroundInHierarchy(fixedBoxHierarchy);
+        fixedBoxHierarchy.remove(groundBox);
         recursiveBuildTree(bTree, fixedBoxHierarchy);
-        /*
-        //parentArray.remove(fixedBoxHierarchy); //handled in the Utilities function.
-        parentArray = Utilities.split(parentArray, fixedBoxHierarchy);
-
-        {
-            //bTree lefft child and bTree rightChild = new BinaryTrees with root node the mergemany of
-            for (ArrayList<FixedBoundingBox> list : parentArray){
-
-            }
-        }
-        */
-
     }
+
+    private FixedBoundingBox findGroundInHierarchy(ArrayList<FixedBoundingBox> hierarchy){
+        for (FixedBoundingBox box : hierarchy){
+            if (map.getValueFromKey(box).getClass() == Ground.class)    //there should only be one Ground object. This code smells bad.
+                return box;
+        }
+        return null;
+    }
+
     private void recursiveBuildTree(BinaryTree tree, ArrayList<FixedBoundingBox> boxes){
         if (boxes.size() == 1) return;
         else {
@@ -158,70 +164,93 @@ public class CollisionDetectionSystem {
         return returnee;
     }
 
+    /**
+     * BUG: Because of Back-Face Culling, there are no triangles to use for Triangle-Triangle Intersection Tests. So,
+     * if a player "backs into" a wall, no collision detection is performed.
+     */
     public void testCollisions(){
-        updateMovingHitBoxes();
-        //TODO: Test for collision.
-        for (BoundingBox box : map.keySet()){
-            if (!(box instanceof MovableBoundingBox)){} //Fixed boxes won't collide by their own power.
-            else{
-                MovableBoundingBox mBox = ((MovableBoundingBox) box);   //cast
-                for (BoundingBox box2 : map.keySet()) {  //TODO: here is where we optimize by organizing scene into hierarchies.
-                    if (isColliding(mBox, box2)) {
-                        SceneEntity entity1 = map.getValueFromKey(mBox);
-                        SceneEntity entity2 = map.getValueFromKey(box2);
-                        entity1.move(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, box2.minPoint, box2.maxPoint));
-                        if (entity1 instanceof Character) {
-//                            ((Player) ((Character) entity)).killPlayer();
-                            if (entity2 instanceof Ground) entity1.isOnGround = true;
-                        }
-                        else if (entity1 instanceof Laser) {
-                            ;   //TODO
-                        }
-                        else {
-                            System.err.println("Unhandled Collision Object Type.");
-                            System.exit(-1);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    public void testCollisions2(){
         updateMovingHitBoxes();
         ArrayList<MovableBoundingBox> movableBoxes = new ArrayList<>();
         for (BoundingBox b : map.keySet()) if (b instanceof MovableBoundingBox) movableBoxes.add((MovableBoundingBox)b);
-        for(MovableBoundingBox mBox : movableBoxes) {
+        boxesToHighlight.clear();
+        for (MovableBoundingBox mBox : movableBoxes) {
+//            if (map.getValueFromKey(mBox).getClass() != World.Player.class)System.out.println("testCollisions2: "+map.getValueFromKey(mBox).getClass());
             FixedBoundingBox box2 = recursiveTreeCollide(bTree, mBox);
-            if (box2 == null) break; //no collision happened
+            if (box2 == null) continue; //not inside SceneEntity's personal BoundingBox
+            System.out.println(map.getValueFromKey(mBox).getClass() + " entered a "+map.getValueFromKey(box2).getClass()+"'s BoundingBox!");
 
             SceneEntity entity1 = map.getValueFromKey(mBox);
             SceneEntity entity2 = map.getValueFromKey(box2);
-            System.out.println(entity1.getClass());
-            System.out.println(entity2.getClass());
-            //rewrite this algorithm for triangle to triangle (cylinder?) collision
-            entity1.move(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, box2.minPoint, box2.maxPoint));
             if (entity1 instanceof Character) {
-//                            ((Player) ((Character) entity)).killPlayer();
-                if (entity2 instanceof Ground) entity1.isOnGround = true;
+                //Collide Triangles!
+                int count = 0;
+                long startTime = System.currentTimeMillis();
+
+                boolean collision = false;
+                //labelled break? cool!
+                intersectionFound:
+                for (Triangle t : entity1.getTriangles()) {
+                    for (Triangle t2 : entity2.getTriangles()) {
+                        count++;
+                        if (isCollidingMeshes(t, t2)) {
+                            collision = true;
+                            //World.spawnPlayer();
+                            System.out.println("Mesh Collision!");
+                            break intersectionFound;
+                        }
+                    }
+                }
+
+                long endTime = System.currentTimeMillis();
+                System.out.println("Triangle-Triangle Intersection tests performed: " + count);
+                long time = (endTime - startTime);
+                System.out.println("Time to do all that calculation: " + time + "ms");
+
+                if (collision){
+                    entity1.move(shortestDirectionOut(entity1.getPosition(), entity2.getPosition(), false).normalize());    //normalized to move the offender out a little bit
+                }
             }
-            else if (entity1 instanceof Laser) {
-                ;   //TODO
+            else if (entity1 instanceof Laser) {  //Laser hit something fixed
+                //check if Laser movement vector is going through a collisionbox of a SceneEntity
+                if (Utilities.boxLineIntersection( box2, ((Laser)entity1).getprevPosition(), entity1.getPosition())) {    //if the Laser went through the box
+                    System.out.println("Laser collision?");
+                    ((Particle) entity1).kill();
+                }
             }
-            else {
-                System.err.println("Unhandled Collision Object Type.");
+            else {        //unknown movable object
+                System.err.println("Unhandled Collision Object Type (Moving).");
                 System.exit(-1);
+            }
+
+        }
+        for (MovableBoundingBox mBox : movableBoxes) {
+            //special case: ground collision    (special because I didn't want the ground to be considered for building the Bounding Box Hierarchy
+            //highlightIndivualBox(shader, mBox);
+            //highlightIndivualBox(shader, groundBox);
+            if (isColliding(mBox, groundBox)) {
+                SceneEntity entity1 = map.getValueFromKey(mBox);
+                SceneEntity entity2 = map.getValueFromKey(groundBox);
+                //TODO: might want to restrict below move call to +y direction
+                entity1.move(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, groundBox.minPoint, groundBox.maxPoint));
+                entity1.isOnGround = true;
             }
         }
     }
 
     private FixedBoundingBox recursiveTreeCollide(BinaryTree<FixedBoundingBox> tree, MovableBoundingBox collidee){
         //base case
-        if (tree.isLeaf()) return tree.getRoot();
+        if (tree.isLeaf()) {
+            if (isColliding(collidee, tree.getRoot())){
+                boxesToHighlight.add(tree.getRoot());
+                return tree.getRoot();
+            }
+            else return null;
+        }
 
         FixedBoundingBox returnee = null;
         if (isColliding(collidee, tree.getRoot())) {
             returnee = recursiveTreeCollide(tree.leftChild, collidee);
+            boxesToHighlight.add(tree.getRoot());
             if (returnee == null) returnee = recursiveTreeCollide(tree.rightChild, collidee);
         }
         return returnee;
@@ -231,7 +260,7 @@ public class CollisionDetectionSystem {
      *
      * @param mBox one Movable Axis Aligned Bounding Box
      * @param box one Generic Axis Aligned Bounding Box
-     * @return Vector3f(-1) if not colliding, otherwise, a Vector3f containing a translation to un-collide
+     * @return true if colliding
      */
     private boolean isColliding(MovableBoundingBox mBox, BoundingBox box){
         if (checkEquivalence(mBox, box)) return false;
@@ -240,6 +269,145 @@ public class CollisionDetectionSystem {
                 (mBox.minPoint.y <= box.maxPoint.y && mBox.maxPoint.y >= box.minPoint.y) &&
                 (mBox.minPoint.z <= box.maxPoint.z && mBox.maxPoint.z >= box.minPoint.z)
         );
+    }
+
+    /**
+     *
+     * @param A one triangle in 3D space
+     * @param B a different triangle in 3D space
+     * @returns a Vector3f detailing the point of collision, or null if none exists
+     */
+    public boolean isCollidingMeshes(Triangle A, Triangle B){
+        //check if any points are equal for easy check
+        if (A.p1.equals(B.p1) || (A.p1.equals(B.p2)) || (A.p1.equals(B.p3)) ||
+        (A.p2.equals(B.p1)) || (A.p2.equals(B.p2)) || (A.p2.equals(B.p3)) ||
+        (A.p3.equals(B.p1)) || (A.p3.equals(B.p2)) || A.p3.equals(B.p3)) return true;
+
+        //instantiation
+        Vector3f P = B.p1;
+        float alpha1;
+        Vector3f p1 = new Vector3f(); B.p2.sub(B.p1, p1);
+        float alpha2;
+        Vector3f p2 = new Vector3f(); B.p3.sub(B.p1, p2);
+
+        Vector3f Q1 = A.p1;
+        Vector3f Q2 = A.p1;
+        Vector3f Q3 = A.p3;
+        float beta1;
+        float beta2;
+        float beta3;
+        Vector3f q1 = new Vector3f(); A.p2.sub(A.p1, q1);
+        Vector3f q2 = new Vector3f(); A.p3.sub(A.p1, q2);
+        Vector3f q3 = new Vector3f(); A.p2.sub(A.p3, q3);
+
+        //Checking for intersection
+        Vector3f r1 = new Vector3f(); Q1.sub(P, r1);
+        Vector3f r2 = new Vector3f(); Q2.sub(P, r2);
+        Vector3f r3 = new Vector3f(); Q3.sub(P, r3);
+        float minor1 = p1.x * p2.y - p1.y * p2.x;
+        float minor2 = p1.y * p2.z - p1.z * p2.y;
+        float minor3 = p1.z * p2.x - p1.x * p2.z;
+
+        float detq1 = (minor1 * q1.z) + (minor2 * q1.x) - (minor3 * q1.y);
+        float detr1 = (minor1 * r1.z) + (minor2 * r1.x) - (minor3 * r1.y);
+
+        float detq2 = (minor1 * q2.z) + (minor2 * q2.x) - (minor3 * q2.y);
+        float detr2 = (minor1 * r2.z) + (minor2 * r2.x) - (minor3 * r2.y);
+
+        float detq3 = (minor1 * q3.z) + (minor2 * q3.x) - (minor3 * q3.y);
+        float detr3 = (minor1 * r3.z) + (minor2 * r3.x) - (minor3 * r3.y);
+
+        if (detq1 == 0 && detq2 == 0 && detq3 == 0) return coplanarIntersection(A,B);    //Triangles are coplanar //BUG: coplanarIntersection algorithm incorrectly checks only x-y plane.
+
+        //Note these are inverted from the article. Professor Stuart seems to think this is correct and minimal testing confirms this.
+        beta1 = -(detr1/detq1);
+        beta2 = -(detr2/detq2);
+        beta3 = -(detr3/detq3);
+
+        if (!((beta1 >= 0 && beta1 <= 1) ||
+                (beta2 >= 0 && beta2 <= 1) ||
+                (beta3 >= 0 && beta3 <= 1))) return false;
+
+        //constraints are met, now check if the line of intersection is valid
+        Vector3f T, t_vec = new Vector3f();
+        //one of the Beta's above will be infitite or NaN. 3 cases:
+        if (!Float.isFinite(beta1)){    //then 2 and 3 are valid
+            Vector3f temp = new Vector3f(); q2.mul(beta2, temp);
+            T = new Vector3f(); Q2.add(temp, T);
+            Vector3f temp2 = new Vector3f(); q3.mul(beta3, temp2);
+            t_vec = new Vector3f(); temp2.sub(temp, t_vec);
+        }
+        else if (!Float.isFinite(beta2)){   //then 1 and 3 are valid
+            Vector3f temp = new Vector3f(); q1.mul(beta1, temp);
+            T = new Vector3f(); Q1.add(temp, T);
+            Vector3f temp2 = new Vector3f(); q3.mul(beta3, temp2);
+            t_vec = new Vector3f(); temp2.sub(temp, t_vec);
+        }
+        else{   //!Float.isFinite(beta3)    //then 1 and 2 and valid
+            Vector3f temp = new Vector3f(); q1.mul(beta1, temp);
+            T = new Vector3f(); Q1.add(temp, T);
+            Vector3f temp2 = new Vector3f(); q2.mul(beta2, temp2);
+            t_vec = new Vector3f(); temp2.sub(temp, t_vec);
+        }
+        Vector3f T2 = new Vector3f(); T.add(t_vec, T2);
+        Vector3f P2 = new Vector3f();
+        Vector3f temp = new Vector3f();
+
+        P.add(p1, P2);
+        Vector3f intersect1 = Utilities.lineIntersect(P,P2,T, T2);
+        P.add(p2, P2);
+        Vector3f intersect2 = Utilities.lineIntersect(P,P2,T, T2);
+        P.add(p1, temp);
+        p2.sub(p1, P2);
+        temp.add(P2, P2);
+        Vector3f intersect3 = Utilities.lineIntersect(temp,P2,T, T2);
+
+        if (intersect1 == null && intersect2 == null && intersect3 == null) return false;
+        //else return the one that isnt null; that's where the vector that cuts triangle A into two pieces intersects with one or two of Triangle B's edges.
+        return true;
+
+
+    }
+
+    private boolean coplanarIntersection(Triangle A, Triangle B){
+        //test 1: check if any of the lines intersect
+        boolean intersects = false;
+        if ( lineIntersect(A.p1,A.p2,B.p1,B.p2) ) intersects = true;
+        if ( lineIntersect(A.p1,A.p2,B.p2,B.p3) ) intersects = true;
+        if ( lineIntersect(A.p1,A.p2,B.p3,B.p1) ) intersects = true;
+
+        if ( lineIntersect(A.p2,A.p3,B.p1,B.p2) ) intersects = true;
+        if ( lineIntersect(A.p2,A.p3,B.p2,B.p3) ) intersects = true;
+        if ( lineIntersect(A.p2,A.p3,B.p3,B.p1) ) intersects = true;
+
+        if ( lineIntersect(A.p3,A.p1,B.p1,B.p2) ) intersects = true;
+        if ( lineIntersect(A.p3,A.p1,B.p2,B.p3) ) intersects = true;
+        if ( lineIntersect(A.p3,A.p1,B.p3,B.p1) ) intersects = true;
+        return intersects;
+    }
+
+    private boolean lineIntersect(Vector3f pA1, Vector3f pA2, Vector3f pB1, Vector3f pB2){
+        //Algorithm assumes that triangles that collide edge to edge are not intersecting. Which is fine, they'll intersect if they overlap
+        float A1 = pA2.y - pA1.y;
+        float B1 = pA1.x - pA2.x;
+        float C1 = A1 * pA1.x + B1 * pA1.y;
+
+        float A2 = pB2.y - pB1.y;
+        float B2 = pB1.x - pB2.x;
+        float C2 = A2 * pB1.x + B2 * pB1.y;
+
+        float det = A1 * B2 - A2 * B1;
+        if (det == 0) return false;     //lines are parallel
+        //else
+        float x = (B2 * C1 - B1 * C2) / det;
+        float y = (A1 * C2 - A2 * C1) / det;
+        if ( (Math.min(pA1.x, pA2.x) <= x && Math.max(pA1.x, pA2.x) >= x) &&
+                (Math.min(pA1.y, pA2.y) <= y && Math.max(pA1.y, pA2.y) >= y) &&
+                (Math.min(pB1.x, pB2.x) <= x && Math.max(pB1.x, pB2.x) >= x) &&
+                (Math.min(pB1.y, pB2.y) <= y && Math.max(pB1.y, pB2.y) >= y)
+                ) return true;
+        return false;
+
     }
 
     private Vector3f shortestDistanceOut(Vector3f min1, Vector3f max1, Vector3f min2, Vector3f max2){
@@ -274,8 +442,20 @@ public class CollisionDetectionSystem {
             if (negZ) shortZ *= -1;
             return new Vector3f(0,0,shortZ);
         }
-        else {System.err.println("What the hell?!"); System.exit(-1); return new Vector3f(0);}   //Ha-Ha...code after a exit call.
+        else {System.err.println("What the hell?!"); System.exit(-1); return null;}   //Ha-Ha...code after a exit call.
+    }
+    private Vector3f shortestDirectionOut(Vector3f pos1, Vector3f pos2, boolean useYdist){
+        float x_dist = pos1.x - pos2.x;
+        float y_dist = pos1.y - pos2.y;
+        float z_dist = pos1.z - pos2.z;
+        float shortest;
+        if (useYdist) shortest = Utilities.min(Math.abs(x_dist), Math.abs(y_dist), Math.abs(z_dist));
+        else shortest = Utilities.min(Math.abs(x_dist), Math.abs(z_dist));
 
+        if (shortest == Math.abs(x_dist)) return new Vector3f(0,0,z_dist);
+        else if (shortest == Math.abs(y_dist) && useYdist) return new Vector3f(0, y_dist,0);
+        else if (shortest == Math.abs(z_dist)) return new Vector3f(x_dist, 0,0);
+        else { System.err.println("Error...Mathematical impossibility."); System.exit(-1); return null; }
     }
 
     private boolean checkEquivalence(MovableBoundingBox mBox, BoundingBox box){
@@ -291,32 +471,15 @@ public class CollisionDetectionSystem {
     boolean needsInit = true;
     ArrayList<Building> FixedHitBoxVisuals;
     ArrayList<Building> MovableHitBoxVisuals;
-    public void drawBoundingBoxes(Shader shader){
-//        method1(shader);
-        method2(shader);
-    }
-
-    private void method1(Shader shader){
-        if (needsInit) FixedHitBoxVisuals = new ArrayList<>();
-        MovableHitBoxVisuals = new ArrayList<>();
-
-        for(BoundingBox box : map.keySet()) {
-            Building shape = null;
-            if (box instanceof FixedBoundingBox && needsInit) {
-                shape = createBoxObject(box);
-                FixedHitBoxVisuals.add(shape);
-            } else if (box instanceof MovableBoundingBox) {
-                shape = createBoxObject(box);       //NOTE: careful, this calls init() every frame. BAAAAAAD.
-                MovableHitBoxVisuals.add(shape);
+    ArrayList<Building> highlights;
+    public void drawBoundingBoxes(Shader shader, boolean boxHighlighting){
+        if (needsInit && boxHighlighting) highlights = new ArrayList<>();
+        if (boxHighlighting) {
+            highlights.clear();
+            for (BoundingBox box : boxesToHighlight) {
+                highlights.add(createBoxObject(box));
             }
         }
-        needsInit = false;
-        for(Building b : FixedHitBoxVisuals) b.renderOnlyLines(shader, new Vector3f(1,1,0));
-        for (Building b : MovableHitBoxVisuals) b.renderOnlyLines(shader, new Vector3f(1,0,1));
-    }
-
-    private void method2(Shader shader){
-        if (needsInit) FixedHitBoxVisuals = new ArrayList<>();
         MovableHitBoxVisuals = new ArrayList<>();
         for (BoundingBox box : map.keySet()) {
             Building shape = null;
@@ -326,15 +489,23 @@ public class CollisionDetectionSystem {
             }
         }
         if (needsInit) {
+            FixedHitBoxVisuals = new ArrayList<>();
             for (BoundingBox box : bTree.getTreeAsSetUnordered()) {
                 Building shape = createBoxObject(box);
                 FixedHitBoxVisuals.add(shape);
             }
         }
         needsInit = false;
+        //order matters. Lines that are drawn first will be shown.
+        if (boxHighlighting) for (Building b : highlights) b.renderOnlyLines(shader, new Vector3f(1,0,0));
         for (Building b : MovableHitBoxVisuals) b.renderOnlyLines(shader, new Vector3f(1,0,1));
         for (Building b : FixedHitBoxVisuals) b.renderOnlyLines(shader, new Vector3f(1,1,0));
 
+    }
+
+    private void highlightIndivualBox(Shader shader,BoundingBox b){
+        Building shape = createBoxObject(b);
+        shape.renderWithLines(shader, new Vector3f(0), new Vector3f(1));
     }
 
     private Building createBoxObject(BoundingBox box){

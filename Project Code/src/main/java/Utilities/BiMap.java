@@ -22,6 +22,8 @@ public class BiMap<K,V> {
         else return null;
     }
 
+    //TODO: figure out how to fix bug where if there are duplicates in the data structure, how to get the right one.
+
     public V getValueFromKey(K key){
         int i = keys.indexOf(key);
         if (i != -1) return values.get(i);

@@ -1,14 +1,14 @@
-package World.Shapes;
+package World.WorldObjects;
 
 import World.TriangleMesh;
 
 
 /**
  * This class is to be the parent of all classes that try to create a character.
- * For example, AbstractHuman should extend this.
+ * For example, HumanModel should extend this.
  * If other character models are created, then they should extend this class.
  */
-public abstract class CharacterModel extends TriangleMesh{
+public abstract class CharacterModel extends CompositeShape{
     protected static float angle;
     protected static boolean increment = true;
 
