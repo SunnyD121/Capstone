@@ -1,6 +1,5 @@
 package World.WorldObjects;
 
-import World.TriangleMesh;
 
 
 /**
@@ -9,10 +8,10 @@ import World.TriangleMesh;
  * If other character models are created, then they should extend this class.
  */
 public abstract class CharacterModel extends CompositeShape{
-    protected static float angle;
-    protected static boolean increment = true;
+    protected float angle;
+    protected boolean increment = true;
 
-    public static void animate(){
+    public void animate(){
         if (angle >= 45 || angle <= -45) increment = !increment;
         if (increment) angle += 2;
         else angle -= 2;

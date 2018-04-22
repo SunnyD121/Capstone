@@ -1,4 +1,4 @@
-#version 410
+#version 430    //used to be 410 but i wanted array of arrays
 
 ///Key:
 // = normal comment, keep it.
@@ -8,9 +8,11 @@
 //uniform vec4 color = vec4(1,0,0,1);
 uniform vec3 lights[12];    //the light of the lamps' positions.
 uniform vec3 lampIntensity;
-uniform vec3 laserPositions[10];  //position of laser's light, max 10 lasers before auto-death
-uniform int numLiveLasers;      //the amount of lasers that are actually alive
-uniform vec3 laserIntensity;
+const int maxAIPlayers = 10;       //number of AI players in the game
+uniform int numAIPlayers;
+uniform vec3 laserPositions[maxAIPlayers+1][10];  //position of laser's light, max 10 lasers before auto-death
+uniform int numLiveLasers[maxAIPlayers+1];      //the amount of lasers that are actually alive
+uniform vec3 laserIntensity[maxAIPlayers+1];
 uniform vec3 Kd;  // Diffuse reflectivity
 uniform vec3 Ks;
 uniform vec3 Ka;
@@ -33,8 +35,8 @@ out vec4 fragColor;
 
 //NOTE: functions must be declared first before they can be used. Order matters.
 
-//High Dynamic Range. Find max of r g b of a single light, and set all three values to {r,g,b}/max, so that the object in light retains color information.
-vec3 highDynamicRange(vec3 color){
+//Find max of r g b of a single light, and set all three values to {r,g,b}/max, so that the object in light retains color information.
+vec3 lightWashOut(vec3 color){
     float max = 1;
     if (color.x > 1 || color.y > 1 || color.z > 1){     //this line feels like a hack, but the algorithm doesn't work without it.
         if (color.x > color.y) max = color.x;
@@ -54,7 +56,7 @@ vec3 lightEquation1(vec3 intensity, vec3 diffuseComponent, float d, vec3 n, vec3
     vec3 light = (1.0/(d*d)) * intensity * (diffuseComponent * max(dot(n,l), 0.0) + Ks * pow(max(dot(h,n),0.0), shine));
 
     //High Dynamic Range adjustment
-        light = highDynamicRange(light);    //retains integrity of the original color (no whitewashing)
+        light = lightWashOut(light);    //retains integrity of the original color (no whitewashing)
 
     return light;
 }
@@ -69,9 +71,9 @@ subroutine uniform renderPassType renderPass;
 
 subroutine (renderPassType) void renderScene(){
     bool debug = false;
-    //bool debugR = false;
-    //bool debugG = false;
-    //bool debugB = false;
+    bool debugR = false;
+    bool debugG = false;
+    bool debugB = false;
     //if (!gl_FrontFacing)
         //discard;    //culls fragments that are being viewed from places players aren't meant to be.
         //EDIT: the above is handled in GLListener.java
@@ -88,21 +90,6 @@ subroutine (renderPassType) void renderScene(){
     if( shadowCoord.z >= 0 ) {
         shadow = textureProj(shadowMap, shadowCoord);
     }
-
-    /*
-    if (textureProj(shadowMap, shadowCoord) == 1)   //see comments below, behaves the same way.
-        debug = true;
-    */
-    /*
-    if(texture(shadowMap, shadowCoord.xyz) == 0f){  //returns 1 for things that are white in the texture
-                                                    //returns 0 for things that are not white in the texture
-        shadow = 0;
-    }
-    */
-    /* true when perspective matrix is used.
-    if (shadowCoord.z > 170)
-        debug = true;
-    */
 
     //sun
     vec3 l = normalize(sunDirection);
@@ -131,16 +118,22 @@ subroutine (renderPassType) void renderScene(){
     }
 
     //lasers
-    for (int i=0; i < numLiveLasers; i++){
-        vec3 lightPos = convertLightLocation(laserPositions[i]);
+    for (int a=0; a < numAIPlayers+1; a++){     //+1 because player is [0]
+        for (int i=0; i < numLiveLasers[a]; i++){
+            vec3 lightPos = convertLightLocation(laserPositions[a][i]);
 
-        float d = length(lightPos - eyePos);
-        vec3 l = normalize(lightPos - eyePos);
-        vec3 h = normalize(l + v);
+            float d = length(lightPos - eyePos);
+            vec3 l = normalize(lightPos - eyePos);
+            vec3 h = normalize(l + v);
 
-        color += lightEquation2(laserIntensity, d);
+            color += lightEquation2(laserIntensity[a], d);
+        }
     }
 
+    if (debugR || debugG || debugB) color = vec3(0,0,0);
+    if (debugR) color += vec3(1,0,0);
+    if (debugG) color += vec3(0,1,0);
+    if (debugB) color += vec3(0,0,1);
 
     fragColor = vec4(color, 1.0);
 }

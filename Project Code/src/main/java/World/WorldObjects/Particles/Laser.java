@@ -8,12 +8,15 @@ import org.joml.Vector3f;
 public class Laser extends Particle{
 
     private Vector3f previousLocation;
+    private Vector3f initalPosition;
+    private int iD;
 
-    public Laser (Vector3f emitterLocation, Vector3f spewDirection){
+    public Laser (Vector3f emitterLocation, Vector3f spewDirection, int iD){
         particleShape = new Cylinder(0.05f, 1.0f);
         particleShape.init();
 
         setPosition(emitterLocation);   //starts at the Emitter's location
+        initalPosition = new Vector3f(emitterLocation);
         setDirection(spewDirection);
 
         velocity = new Vector3f(getDirection().mul(75.0f, new Vector3f()));
@@ -24,6 +27,7 @@ public class Laser extends Particle{
         previousLocation = new Vector3f(offset);
 
         lifespan = 100;
+        this.iD = iD;
         super.moreConstruction();
     }
 
@@ -33,9 +37,11 @@ public class Laser extends Particle{
         super.update();
     }
 
-    public Vector3f getprevPosition() {
+    public Vector3f getPrevPosition() {
         return new Vector3f(previousLocation);
     }
+    public Vector3f getInitalPosition(){ return new Vector3f(initalPosition); }
+    public int getID(){ return iD; }
 
     @Override
     public void generateCollisionBox() {

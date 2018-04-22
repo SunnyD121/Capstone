@@ -9,7 +9,7 @@ public abstract class SceneEntity {
     Vector3f position;
     Vector3f direction;
     protected Triangle[] triangles;
-    boolean isAffectedByGravity = false;
+    public boolean isAffectedByGravity = false;
     public boolean isOnGround = true;
 
     public Vector3f getPosition() {
@@ -24,7 +24,7 @@ public abstract class SceneEntity {
         this.direction = new Vector3f(newDirection);
     }
 
-    public void move(Vector3f distance){ position.add(distance);}
+    public void moveDistance(Vector3f distance){ position.add(distance);}
 
     public abstract float getLength();
     public abstract float getHeight();

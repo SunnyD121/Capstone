@@ -2,13 +2,11 @@ package World;
 
 import Core.CollisionDetectionSystem.CollisionDetectionSystem;
 import Core.Shader;
-import Utilities.Utilities;
 import World.WorldObjects.Particles.Laser;
 import World.WorldObjects.Particles.Particle;
 import World.WorldObjects.Particles.Snowflake;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import java.util.ArrayList;
 
@@ -34,10 +32,10 @@ public class Emitter {
         particles = new ArrayList<>();
     }
 
-    public void addParticle(){
+    public void addParticle(int iD){
         Particle p = null;
         if (type == SNOWFLAKE) p = new Snowflake(location);
-        else if (type == LASER) p = new Laser(location, direction);
+        else if (type == LASER) p = new Laser(location, direction, iD);
         else System.err.println("This Particle has not been implemented in Emitter.addParticle(): "+type);
 
         particles.add(p);
@@ -49,28 +47,28 @@ public class Emitter {
 
     public void run(Shader shader, Vector3f location, Vector3f cameraPosition){
 
-        for (int i = 0; i < density; i++) addParticle();
+        for (int i = 0; i < density; i++) addParticle(-1);
 
-        update(shader, location, cameraPosition);
+        update(shader, location, -1);
     }
 
-    public void update(Shader shader, Vector3f location, Vector3f cameraPosition){
+    public void update(Shader shader, Vector3f location, int iD){
         setMaterial(shader, type);
         setLocation(location);
 
-        if (particles.isEmpty()) for(int i=0;i<10;i++) shader.setUniform("laserPositions["+i+"]", new Vector3f());
+        if (particles.isEmpty()) for(int i=0;i<10;i++) shader.setUniform("laserPositions["+iD+"]["+i+"]", new Vector3f());
 
         int counter = 0;
-        shader.setUniform("numLiveLasers", particles.size());
+        shader.setUniform("numLiveLasers["+iD+"]", particles.size());
         for (int i = particles.size()-1; i >= 0; i--){
             Particle p = particles.get(i);
             //TODO: These if statements are yuck. There should be a more elegant solution?
             if (p instanceof Laser) {
-                shader.setUniform("laserPositions[" + counter + "]", p.getPosition());
+                shader.setUniform("laserPositions["+iD+"][" + counter + "]", p.getPosition());
                 counter++;
             }
 
-            if (p instanceof Snowflake) ((Snowflake) p).run(shader, new Matrix4f(), cameraPosition);
+            if (p instanceof Snowflake) ((Snowflake) p).run(shader, new Matrix4f(), null);
             else p.run(shader);
 
             if (p.isDead()) {

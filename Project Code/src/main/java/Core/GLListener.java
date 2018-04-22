@@ -1,7 +1,6 @@
 package Core;
 
 import GUI.PauseMenu;
-import Utilities.Utilities;
 import World.World;
 
 //import com.jogamp.opengl.*;

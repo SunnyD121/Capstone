@@ -20,15 +20,16 @@ import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import java.awt.*;
 import java.io.FileReader;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.IOException;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 import static Core.GLListener.gl;
-import static World.Emitter.ParticleType.LASER;
 import static World.World.CameraMode.CHASE;
 import static World.World.CameraMode.DEBUG_VIEW;
 import static World.World.CameraMode.SUN_VIEW;
@@ -44,6 +45,7 @@ public class World implements InputNotifiee {
     private static Vector3f initialPlayerPosition;
     private static Vector3f initialPlayerDirection;
     private static Player player;
+    private static ArrayList<Enemy> enemies;
     private Camera cam1, cam2, cam3;
     private float zoom_factor = 1;
     private final float MAX_ZOOM = 3;
@@ -59,7 +61,7 @@ public class World implements InputNotifiee {
     private ArrayList<Lamp> lamps;
     private ArrayList<StepPyramid> stepPyramids;
     private int[] textureIDs = new int[4];  //change this value per number of textures being loaded.
-    private Emitter snowEmitter, laserEmitter;
+    private Emitter snowEmitter;
     private CollisionDetectionSystem CDS;
 
     protected enum CameraMode{
@@ -86,6 +88,7 @@ public class World implements InputNotifiee {
         jsonObject = (JsonObject) parse.parse(reader);
 
         worldObjects = new ArrayList<>();
+        enemies = new ArrayList<Enemy>();
         trees = new ArrayList<>();
         lamps = new ArrayList<>();
 
@@ -162,10 +165,26 @@ public class World implements InputNotifiee {
         //Player
         JsonArray startPosition = jsonObject.get("startPosition").getAsJsonArray();
         initialPlayerPosition = new Vector3f(startPosition.get(0).getAsFloat(), startPosition.get(1).getAsFloat() + 1, startPosition.get(2).getAsFloat());
-        player = new Player();
-
-        player = new Player();
+        player = new Player(Color.WHITE);
         addWorldObject(player);
+        player.assignPlayerNum(0);
+
+        //Enemies
+        //enemies.add(new Enemy(Color.BLACK));  //DO NOT USE BLACK
+
+        enemies.add(new Enemy(Color.RED));
+        addWorldObject(enemies.get(0));
+
+        enemies.add(new Enemy(Color.YELLOW));
+        addWorldObject(enemies.get(1));
+        enemies.add(new Enemy(Color.PINK));
+        addWorldObject(enemies.get(2));
+        enemies.add(new Enemy(Color.MAGENTA));
+        addWorldObject(enemies.get(3));
+        enemies.add(new Enemy(Color.GREEN));
+        addWorldObject(enemies.get(4));
+
+        for (int i = 0; i < enemies.size();i++) enemies.get(i).assignPlayerNum(i+1);
 
         //Lamps
         JsonArray lights = jsonObject.get("lamps").getAsJsonArray();
@@ -217,19 +236,33 @@ public class World implements InputNotifiee {
         for (StepPyramid step : stepPyramids) step.init();
         ground.init();
         player.init();
+        for (Enemy enemy : enemies) enemy.init();
 
         //Particles
         //NOTE: increasing the particleDensity increases severity of storm, but it also introduces lag.
         //snowEmitter = new Emitter(SNOWFLAKE, new Vector3f(0,50,0), 30);
-        laserEmitter = new Emitter(LASER, new Vector3f(0,4,0), new Vector3f(0), 1);
 
         //world has been initialized, now add dynamic things like players
-
+        //player
         player.setPosition(initialPlayerPosition);
         Vector3f dir = new Vector3f(player.getDirection());
         dir.rotateAxis((float)Math.toRadians(70.0f), 0,1,0);
         initialPlayerDirection = new Vector3f(dir.normalize());
         player.setDirection(initialPlayerDirection);
+        //enemies
+        for (int i = 0; i < enemies.size(); i++){
+            //enemies.get(i).setPosition(findOpposingPosition(initialPlayerPosition));
+            enemies.get(i).setPosition(findRandomPosition());
+            enemies.get(i).getPosition().sub(new Vector3f(0,0,0), dir); //vector pointing towards middle
+            dir.negate().normalize();
+            enemies.get(i).setDirection(dir);
+            //set the spawnData in stone.
+            enemies.get(i).setSpawnLocation(enemies.get(i).getPosition());
+            enemies.get(i).setSpawnDirection(enemies.get(i).getDirection());
+            enemies.get(i).becomeAutonomous();
+
+        }
+
 
         //Cameras
         cam1 = new Camera(Camera.ProjectionType.PERSPECTIVE);
@@ -244,6 +277,8 @@ public class World implements InputNotifiee {
         /* Collision Boxes */
         //player
         CDS.addCollisionBox(player, player.getPosition(), player.getLength(), player.getHeight(), player.getWidth(), player.getGroundAdjustment());
+        //enemies
+        for (Enemy p : enemies) CDS.addCollisionBox(p, p.getPosition(), p.getLength(), p.getHeight(), p.getWidth(), p.getGroundAdjustment());
         //buildings
         for (Building b : city) {
             Vector3f minP = b.getMin();
@@ -261,10 +296,11 @@ public class World implements InputNotifiee {
         for (StepPyramid pyr : stepPyramids) CDS.addCollisionBox(pyr, pyr.getPosition(), pyr.getLength(), pyr.getHeight(), pyr.getWidth(), pyr.getPositionalOffset());
         //Particles
         //This must be done when the object is created, so, not here.
-        //TODO: Particle box doesn't accurately surround laser
+        //TODO: Particle box doesn't accurately surround laser  EDIT: it's better, but still needs a little work.
 
-//        CDS.formConglomerates(Tree.class);  //creates a bounding box around all instances of Tree in the scene. (thus far)
+        //CDS.formConglomerates(Tree.class);  //creates a bounding box around all instances of Tree in the scene. (thus far)
         CDS.postInit();
+
     } //end init()
 
     boolean isPaused = false;
@@ -272,12 +308,12 @@ public class World implements InputNotifiee {
         Matrix4f worldToEye = updateCamera(shader);
         updateLight(shader, worldToEye);
 
-        //TODO: This only needs to be called one in init, but I don't want to pass a shader argument?   //EDIT: Does this need to be called?
+        //TODO: This only needs to be called once in init, but I don't want to pass a shader argument?
         shader.setUniform("tex", 1);    // 1 Because using glActiveTexture(TEXTURE1)
+        shader.setUniform("numAIPlayers", enemies.size());
         shader.setUniform("ObjectToWorld", new Matrix4f());
 
         //Render Test Objects:
-
 
         //draw the objects of the world:
         drawWorld(shader);
@@ -287,13 +323,19 @@ public class World implements InputNotifiee {
 
         //Test for colliding objects
         CDS.testCollisions();
-        CDS.drawBoundingBoxes(shader, false);
+        //CDS.drawBoundingBoxes(shader, false);
+
 
         //add gravity
-        for (SceneEntity entity : worldObjects) if (entity.isAffectedByGravity) entity.move(GRAVITY);
+        for (SceneEntity entity : worldObjects) if (entity.isAffectedByGravity) entity.moveDistance(GRAVITY);
 
         //check if player is out-of-bounds
-        if (player.getPosition().y < -10) killPlayer();
+        if (player.getPosition().y < -10) killPlayer(player);
+        //check if for some reason an enemy went out of bounds
+        for (Enemy enemy : enemies) if (enemy.getPosition().y < -10) killPlayer(enemy);
+
+        //Run an iteration of the Ai algorithms
+        for (Enemy enemy : enemies) enemy.updateAI(player.getPosition());
 
         //poll for user input
         InputHandler.pollInput();   //there is value in doing this, because this gets called once per frame
@@ -307,6 +349,7 @@ public class World implements InputNotifiee {
         drawLamps(shader);
         drawStepPyramids(shader);
         player.render(shader);
+        for (Enemy enemy : enemies) enemy.render(shader);
     }
 
     private void drawTrees(Shader shader){
@@ -369,33 +412,12 @@ public class World implements InputNotifiee {
         step.render(shader, mat);
     }
     private void drawParticles(Shader shader){
+        player.drawLasers(shader, 0);
+        for (int i = 0; i < enemies.size(); i++) enemies.get(i).drawLasers(shader, i+1);
+
         //Material coloring is handled withing emitter.update()
         //snowEmitter.run(shader, new Matrix4f(), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
-        laserEmitter.setDirection(player.getDirection());
-        shader.setUniform("laserIntensity", new Vector3f(0,0,25));
-        //for (int i=0;i<10;i++)shader.setUniform("laserPositions["+i+"]", player.getPosition());
 
-        /*
-        float angle = (float)Math.acos(player.getDirection().dot(initialPlayerDirection));  //probably in radians?
-        if (player.getDirection().equals(initialPlayerDirection)) angle = 0;    //check for division by 0
-        System.out.printf("%.2f degrees\n",Math.toDegrees(angle));
-        //float angleOffset = angle / (float)Math.toRadians(180); //percent player has turned
-        //System.out.println((float)Math.toDegrees(angle));
-        //System.out.printf("%.2f", angleOffset); System.out.println("%");
-        //angleOffset *= 2;
-
-        float correction;
-        if (angle < Math.toRadians(180)) correction = ((float)Math.cos(angle)-1) * (0.5f);
-        else correction = (1 - (angle-180)/180.0f) * (0.5f * 2);
-        float z = 0.5f - correction;
-
-        //if (angleOffset < 1) finale = 0.5f + angleOffset;
-        //else finale = 0.5f + 1 - (1 - angleOffset);
-        //System.out.println("Finale: " + finale);    //for the z component of the location below. CURRENTLY BUGGED.
-        //Perhaps not linear correction
-        */
-
-        laserEmitter.update(shader, player.getPosition().add(new Vector3f(0,2.5f,0.0f), new Vector3f()), (mode == CHASE) ? cam1.getPosition() : cam2.getPosition());
     }
 
     private Matrix4f updateCamera(Shader shader){
@@ -525,14 +547,40 @@ public class World implements InputNotifiee {
     public static void removeWorldObject(SceneEntity e){
         worldObjects.remove(e);
     }
-    
-    public void killPlayer(){
-        player.setPosition(initialPlayerPosition);
-        player.setDirection(initialPlayerDirection);
+
+    private Vector3f findOpposingPosition(Vector3f pos) {
+        //only use x,z and NOT y.
+        float x,z;
+        x = (pos.x > 0) ? ground.getMinCorner().x + 5 : ground.getMaxCorner().x - 5;
+        z = (pos.z > 0) ? ground.getMinCorner().z + 5 : ground.getMaxCorner().z - 5;
+        return new Vector3f(x, pos.y, z);
+
     }
-    public static void spawnPlayer(){
-        player.setPosition(initialPlayerPosition);
-        player.setDirection(initialPlayerDirection);
+
+    Random r = new Random();
+    private Vector3f findRandomPosition(){
+        int x = r.nextInt(90) + 5;
+        int y = 1;
+        int z = r.nextInt(90) + 5;
+        return new Vector3f(x,y,z);
+    }
+
+    public void killPlayer(Player p){
+        spawnPlayer(p);
+    }
+    public static void spawnPlayer(Player p){
+        if (p.equals(player)) {
+            player.setPosition(initialPlayerPosition);
+            player.setDirection(initialPlayerDirection);
+        }
+        else {
+            for (Enemy enemy : enemies){
+                if (p.equals(enemy)) {
+                    enemy.setPosition(enemy.getSpawnLocation());
+                    enemy.setDirection(enemy.getSpawnDirection());
+                }
+            }
+        }
     }
 
     //InputNotifiee interface
@@ -621,31 +669,9 @@ public class World implements InputNotifiee {
         player.moveY(MOVE_SPEED * 10);
     }
 
-
-    long timeCheck = 0;
-    Vector3f vel;
     @Override
     public void shoot(){
-        boolean debug = false;
-        if (!debug) {
-            long timeNow = System.currentTimeMillis();
-            if (timeNow > timeCheck + 500) {     //if 500ms have passed since last laser was fired...
-                laserEmitter.addParticle();
-                timeCheck = timeNow;
-            }
-        }
-        else {
-            if (laserEmitter.particles.size() < 1) timeCheck = 0;
-            if (timeCheck == 0) {
-                laserEmitter.addParticle();
-                vel = laserEmitter.particles.get(0).getVelocity();
-                laserEmitter.particles.get(0).setVelocity(new Vector3f(0));
-                timeCheck++;
-            }
-            laserEmitter.particles.get(0).setLifespan(200);
-            laserEmitter.particles.get(0).move(vel.normalize());
-        }
-
+        player.shootLaser();
     }
 
     @Override

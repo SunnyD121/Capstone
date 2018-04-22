@@ -39,9 +39,9 @@ public abstract class TriangleMesh extends SceneEntity {
     }
 
     public void render(Shader shader, Matrix4f m){
-        System.out.println("This is an error. Why have you come here?");
+        System.err.println("This is an error. Why have you come here?");
     }
-    public void render(Shader shader, Vector3f v1, Vector3f v2){System.out.println("This is an error. Why have you come here?");}
+    public void render(Shader shader, Vector3f v1, Vector3f v2){System.err.println("This is an error. Why have you come here?");}
 
     public void renderWithLines(Shader shader, Vector3f color, Vector3f lineColor){
         Material m = new Material();

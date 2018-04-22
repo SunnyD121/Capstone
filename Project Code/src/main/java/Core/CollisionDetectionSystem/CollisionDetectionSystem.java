@@ -6,6 +6,8 @@ import Utilities.Utilities;
 import Utilities.BinaryTree;
 import World.AbstractShapes.Triangle;
 
+import World.Enemy;
+import World.Player;
 import World.WorldObjects.Particles.Laser;
 import World.WorldObjects.Particles.Particle;
 import World.AbstractShapes.Building;
@@ -13,6 +15,7 @@ import World.Character;
 import World.SceneEntity;
 
 import World.WorldObjects.Ground;
+import javafx.scene.Scene;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -164,23 +167,20 @@ public class CollisionDetectionSystem {
         return returnee;
     }
 
-    /**
-     * BUG: Because of Back-Face Culling, there are no triangles to use for Triangle-Triangle Intersection Tests. So,
-     * if a player "backs into" a wall, no collision detection is performed.
-     */
     public void testCollisions(){
         updateMovingHitBoxes();
         ArrayList<MovableBoundingBox> movableBoxes = new ArrayList<>();
         for (BoundingBox b : map.keySet()) if (b instanceof MovableBoundingBox) movableBoxes.add((MovableBoundingBox)b);
         boxesToHighlight.clear();
+
+        //Moving vs Fixed collision test (contains a continue call)
         for (MovableBoundingBox mBox : movableBoxes) {
-//            if (map.getValueFromKey(mBox).getClass() != World.Player.class)System.out.println("testCollisions2: "+map.getValueFromKey(mBox).getClass());
             FixedBoundingBox box2 = recursiveTreeCollide(bTree, mBox);
             if (box2 == null) continue; //not inside SceneEntity's personal BoundingBox
-            System.out.println(map.getValueFromKey(mBox).getClass() + " entered a "+map.getValueFromKey(box2).getClass()+"'s BoundingBox!");
 
             SceneEntity entity1 = map.getValueFromKey(mBox);
             SceneEntity entity2 = map.getValueFromKey(box2);
+
             if (entity1 instanceof Character) {
                 //Collide Triangles!
                 int count = 0;
@@ -194,8 +194,6 @@ public class CollisionDetectionSystem {
                         count++;
                         if (isCollidingMeshes(t, t2)) {
                             collision = true;
-                            //World.spawnPlayer();
-                            System.out.println("Mesh Collision!");
                             break intersectionFound;
                         }
                     }
@@ -207,22 +205,42 @@ public class CollisionDetectionSystem {
                 System.out.println("Time to do all that calculation: " + time + "ms");
 
                 if (collision){
-                    entity1.move(shortestDirectionOut(entity1.getPosition(), entity2.getPosition(), false).normalize());    //normalized to move the offender out a little bit
+                    entity1.moveDistance(shortestDirectionOut(entity1.getPosition(), entity2.getPosition(), false).normalize());    //normalized to move the offender out a little bit
+                    if (entity1 instanceof Enemy) ((Enemy) entity1).collisionResponse();
                 }
             }
             else if (entity1 instanceof Laser) {  //Laser hit something fixed
-                //check if Laser movement vector is going through a collisionbox of a SceneEntity
-                if (Utilities.boxLineIntersection( box2, ((Laser)entity1).getprevPosition(), entity1.getPosition())) {    //if the Laser went through the box
-                    System.out.println("Laser collision?");
-                    ((Particle) entity1).kill();
-                }
+                ((Particle) entity1).kill();
             }
             else {        //unknown movable object
                 System.err.println("Unhandled Collision Object Type (Moving).");
                 System.exit(-1);
             }
-
         }
+
+        //Moving vs Moving collision test
+        for (MovableBoundingBox mBox : movableBoxes) {
+            for (MovableBoundingBox mBox2 : movableBoxes) {
+                if (isColliding(mBox, mBox2)) {
+                    SceneEntity entity1 = map.getValueFromKey(mBox);
+                    SceneEntity entity2 = map.getValueFromKey(mBox2);
+
+                    if (entity1 instanceof Laser ) {
+                        if (entity2 instanceof Player) {
+                            if (((Laser) entity1).getID() == ((Player) entity2).getPlayerNum())
+                                continue;    //no collision should register since the player spawned the laser
+                            ((Player) entity2).kill();
+                            System.out.println("Player "+((Player)entity2).getPlayerNum()+" died!");
+                        }
+                    }
+
+
+                    map.getValueFromKey(mBox).moveDistance(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, mBox2.minPoint, mBox2.maxPoint));
+
+                }
+            }
+        }
+
         for (MovableBoundingBox mBox : movableBoxes) {
             //special case: ground collision    (special because I didn't want the ground to be considered for building the Bounding Box Hierarchy
             //highlightIndivualBox(shader, mBox);
@@ -231,7 +249,7 @@ public class CollisionDetectionSystem {
                 SceneEntity entity1 = map.getValueFromKey(mBox);
                 SceneEntity entity2 = map.getValueFromKey(groundBox);
                 //TODO: might want to restrict below move call to +y direction
-                entity1.move(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, groundBox.minPoint, groundBox.maxPoint));
+                entity1.moveDistance(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, groundBox.minPoint, groundBox.maxPoint));
                 entity1.isOnGround = true;
             }
         }
@@ -264,11 +282,29 @@ public class CollisionDetectionSystem {
      */
     private boolean isColliding(MovableBoundingBox mBox, BoundingBox box){
         if (checkEquivalence(mBox, box)) return false;
+        //special check because Lasers are too speedy.
+        if (map.getValueFromKey(mBox) instanceof Laser) {return speedyObjectCollisionTest(mBox, box);
+            /*
+            Laser l = (Laser)map.getValueFromKey(mBox);
+            return (
+                    (l.getPosition().x <= box.maxPoint.x && l.getprevPosition().x >= box.minPoint.x) &&
+                            (l.getPosition().y <= box.maxPoint.y && l.getprevPosition().y >= box.minPoint.y) &&
+                            (l.getPosition().z <= box.maxPoint.z && l.getprevPosition().z >= box.minPoint.z)
+            );
+        */
+        }
         return (
                 (mBox.minPoint.x <= box.maxPoint.x && mBox.maxPoint.x >= box.minPoint.x) &&
                 (mBox.minPoint.y <= box.maxPoint.y && mBox.maxPoint.y >= box.minPoint.y) &&
                 (mBox.minPoint.z <= box.maxPoint.z && mBox.maxPoint.z >= box.minPoint.z)
         );
+    }
+
+    private boolean speedyObjectCollisionTest(MovableBoundingBox mBox, BoundingBox box){
+        //guarenteed to be a laser by a previous check //NOTE: this may change in the future
+        Laser laser = ((Laser) map.getValueFromKey(mBox));
+        boolean output = Utilities.boxLineIntersection(box, laser.getPosition(), laser.getPrevPosition());
+        return output;
     }
 
     /**
@@ -508,7 +544,7 @@ public class CollisionDetectionSystem {
         shape.renderWithLines(shader, new Vector3f(0), new Vector3f(1));
     }
 
-    private Building createBoxObject(BoundingBox box){
+    private static Building createBoxObject(BoundingBox box){
         Building shape = new Building();
         Vector3f[] data = box.getVertexData();
         Vector3f[] temp = new Vector3f[]{data[0], data[1], data[2], data[3]};

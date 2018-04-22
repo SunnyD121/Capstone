@@ -36,7 +36,7 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
                 "Move Forward", "Move Backward", "Move Left" , "Move Right",
                 "Turn Left", "Turn Right",
                 "Jump",
-                "Switch Mode",      //TODO: this is for debugging and should be removed
+                "Shoot",
                 "Pause"
         };
         comboBox = new JComboBox<>(comboBoxItems);

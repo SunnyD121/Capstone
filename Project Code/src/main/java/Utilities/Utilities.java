@@ -2,6 +2,9 @@ package Utilities;
 
 import Core.CollisionDetectionSystem.BoundingBox;
 import Core.CollisionDetectionSystem.FixedBoundingBox;
+import World.Enemy;
+import World.Player;
+import World.SceneEntity;
 import com.jogamp.opengl.util.GLBuffers;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -192,10 +195,15 @@ public class Utilities {
         return build;
     }
 
-    public static Matrix4f changeDirection(Vector3f direction){
+    public static Matrix4f changeDirection(Player p, Vector3f direction){
+        //find angle between z-axis and current direction (in xz plane?)
         float directionAngle = (float)Math.acos(direction.normalize().dot(new Vector3f(0,0,1).normalize()));
+        //negate accordingly
         if (direction.x < 0) directionAngle *= -1.0f;
-        return new Matrix4f().rotate(directionAngle, new Vector3f(0,1,0));
+        //return matrix with data rotated by angle around y-axis
+        Matrix4f temp = new Matrix4f().rotate(directionAngle, new Vector3f(0,1,0));
+        return temp;
+        //return new Matrix4f().rotate(directionAngle, new Vector3f(0,1,0));
     }
 
     public static Matrix4f setLocationAndDirectionManually(Vector3f location, Vector3f direction){
@@ -402,22 +410,42 @@ public class Utilities {
         return n;
     }
 
-    public static boolean boxLineIntersection(BoundingBox box, Vector3f A, Vector3f B){
-        /*
-        //if the line is outside the box
-        if (B.x < box.getMinPoint().x && A.x < box.getMinPoint().x) return false;
-        if (B.x > box.getMaxPoint().x && A.x > box.getMaxPoint().x) return false;
-        if (B.y < box.getMinPoint().y && A.y < box.getMinPoint().y) return false;
-        if (B.y < box.getMaxPoint().y && A.y < box.getMaxPoint().y) return false;
-        if (B.z < box.getMinPoint().z && A.z < box.getMinPoint().z) return false;
-        if (B.z < box.getMaxPoint().z && A.z < box.getMaxPoint().z) return false;
-        */
-        return true;
-    }
-
     private static void error(String msg){
         System.err.println(msg);
         System.exit(-1);
+    }
+
+    //Separating Axis Theorem
+    public static boolean boxLineIntersection(BoundingBox box, Vector3f A, Vector3f B){
+        Vector3f d = new Vector3f(); B.sub(A, d); d.mul(0.5f);      //half the distance between A and B
+        Vector3f e = new Vector3f(); box.getMaxPoint().sub(box.getMinPoint(), e); e.mul(0.5f);      //distance from corner to center of box
+        Vector3f c = new Vector3f();
+        Vector3f temp = new Vector3f();
+        Vector3f temp2 = new Vector3f();
+        A.add(d, temp);     //midpoint of AB
+        box.getMinPoint().add(box.getMaxPoint(), temp2); temp2.mul(0.5f);   //center of box
+        temp.sub(temp2, c);     //midpoint of AB - centerpoint
+        Vector3f ad = makePositive(d);
+
+        if (Math.abs(c.x) > (e.x + ad.x)) return false;
+        if (Math.abs(c.y) > (e.y + ad.y)) return false;
+        if (Math.abs(c.z) > (e.z + ad.z)) return false;
+
+        float epsilon = 0f;
+        if(Math.abs(d.y * c.z - d.z * c.y) > e.y * ad.z + e.z * ad.y + epsilon) return false;
+        if(Math.abs(d.z * c.x - d.x * c.z) > e.z * ad.x + e.x * ad.z + epsilon) return false;
+        if(Math.abs(d.x * c.y - d.y * c.x) > e.x * ad.y + e.y * ad.x + epsilon) return false;
+        return true;
+    }
+
+
+    private static Vector3f makePositive(Vector3f v){
+        return new Vector3f((float)Math.abs(v.x),(float)Math.abs(v.y),(float)Math.abs(v.z));
+    }
+
+    private static float findValidNumber(float...nums){
+        for (float num : nums) if (Float.isFinite(num)) return num;
+        return Float.NaN;
     }
 
 }

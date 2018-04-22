@@ -34,12 +34,19 @@ public abstract class Character extends SceneEntity{
     }
 
     public void move(float distance){
-        model.animate();    //BUG: Alters static data from a class instance.
+        model.animate();
         Vector3f temp = new Vector3f();
-        direction.mul(distance, temp);
+        getDirection().mul(distance, temp);
         position.add(temp, position);
 
     }
+
+    public void move(Vector3f distance){
+        super.moveDistance(distance);
+        model.animate();
+
+    }
+
     public void moveY(float distance){
         position.y += distance;
     }

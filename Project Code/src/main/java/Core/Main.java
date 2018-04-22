@@ -1,6 +1,8 @@
 package Core;
 
+import Core.CollisionDetectionSystem.BoundingBox;
 import Core.CollisionDetectionSystem.CollisionDetectionSystem;
+import Core.CollisionDetectionSystem.FixedBoundingBox;
 import com.jogamp.newt.event.WindowAdapter;
 import com.jogamp.newt.event.WindowEvent;
 import com.jogamp.newt.opengl.GLWindow;
@@ -18,7 +20,13 @@ public class Main {
 
     public static void main(String[] args) {
         function(args);
+        //testFunction();
+
     }
+    private static void testFunction(){
+
+    }
+
     public static void function(String [] args){
         // Set the profile to 4.0 core
         GLProfile glp = GLProfile.get("GL4");
