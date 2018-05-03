@@ -164,7 +164,7 @@ public class InputHandler implements KeyListener, MouseListener {
         if (!locked) {
             //for updates to states
             for (Action action : states.keySet()) {
-                if (states.containsKey(action) && states.get(action)) {
+                if (states.containsKey(action) && events.containsKey(action) && states.get(action)) {
                     Runnable runnable = events.get(action);
                     runnable.run();
                 }
