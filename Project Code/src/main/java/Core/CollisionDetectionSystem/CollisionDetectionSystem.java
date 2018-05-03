@@ -1,8 +1,8 @@
 package Core.CollisionDetectionSystem;
 
 import Core.Shader;
-import Utilities.BiMap;
 import Utilities.Utilities;
+import Utilities.BiMap;
 import Utilities.BinaryTree;
 import World.AbstractShapes.Triangle;
 
@@ -15,11 +15,9 @@ import World.Character;
 import World.SceneEntity;
 
 import World.WorldObjects.Ground;
-import javafx.scene.Scene;
-import org.joml.Matrix3x2f;
+import World.Worlds.AbstractWorld;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
-import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 
 import java.util.ArrayList;
 
@@ -34,17 +32,24 @@ public class CollisionDetectionSystem {
     static BinaryTree<FixedBoundingBox> bTree;
     ArrayList<BoundingBox> boxesToHighlight;
     FixedBoundingBox groundBox;
+    private Shader shader;
 
     private static CollisionDetectionSystem singleton;
 
     private CollisionDetectionSystem(){
         map = new BiMap<BoundingBox, SceneEntity>();
         boxesToHighlight = new ArrayList<>();
+        shader = Shader.getInstance();
     }
 
     public static CollisionDetectionSystem getInstance(){
         if (singleton == null) singleton = new CollisionDetectionSystem();
         return singleton;
+    }
+
+    public static void reset(){
+        singleton = null;
+        getInstance();
     }
 
     public void addCollisionBox(SceneEntity object, Vector3f minPoint, Vector3f maxPoint, Vector3f transform){
@@ -87,7 +92,6 @@ public class CollisionDetectionSystem {
             mins_z[i] = group[i].minPoint.z;
             maxes_z[i] = group[i].maxPoint.z;
         }
-
         return new FixedBoundingBox(
                 new Vector3f(Utilities.min(mins_x), Utilities.min(mins_y), Utilities.min(mins_z)),
                 new Vector3f(Utilities.max(maxes_x), Utilities.max(maxes_y), Utilities.max(maxes_z)),
@@ -101,7 +105,7 @@ public class CollisionDetectionSystem {
             if (e.getClass() == classtype) group.add(e);
         }
         BoundingBox[] array = new BoundingBox[group.size()];
-        for (int i = 0; i < array.length; i++) array[i] = map.getKeyFromValue(group.get(i));
+        for (int i = 0; i < array.length; i++) array[i] = map.getFirstKeyFromValue(group.get(i));
         FixedBoundingBox box = (FixedBoundingBox)mergeMany(array);
         map.put(box, null);
     }
@@ -122,15 +126,16 @@ public class CollisionDetectionSystem {
     }
 
     private FixedBoundingBox findGroundInHierarchy(ArrayList<FixedBoundingBox> hierarchy){
-        for (FixedBoundingBox box : hierarchy){
-            if (map.getValueFromKey(box).getClass() == Ground.class)    //there should only be one Ground object. This code smells bad.
+        for (FixedBoundingBox box : hierarchy) {
+            if (map.getFirstValueFromKey(box).getClass() == Ground.class)    //there should only be one Ground object. This code smells bad.
                 return box;
         }
         return null;
     }
 
     private void recursiveBuildTree(BinaryTree tree, ArrayList<FixedBoundingBox> boxes){
-        if (boxes.size() == 1) return;
+        //BUG: if only one FixedBoundingBox (not counting ground) in scene, this will not add it properly
+        if (boxes.size() <= 1) return;
         else {
             Vector3f axisSplit = findSplitAxis(boxes);
             boxes = Utilities.sortByLocation(axisSplit, boxes);
@@ -140,10 +145,10 @@ public class CollisionDetectionSystem {
             FixedBoundingBox[] temp2 = new FixedBoundingBox[rightHalf.size()];
             leftHalf.toArray(temp1);
             rightHalf.toArray(temp2);
-            tree.leftChild = new BinaryTree<FixedBoundingBox>((FixedBoundingBox) mergeMany(temp1));
-            tree.rightChild = new BinaryTree<FixedBoundingBox>((FixedBoundingBox) mergeMany(temp2));
-            recursiveBuildTree(tree.leftChild, leftHalf);
-            recursiveBuildTree(tree.rightChild, rightHalf);
+            if (temp1.length != 0) {tree.leftChild = new BinaryTree<FixedBoundingBox>((FixedBoundingBox) mergeMany(temp1));
+            recursiveBuildTree(tree.leftChild, leftHalf);}
+            if (temp2.length != 0) {tree.rightChild = new BinaryTree<FixedBoundingBox>((FixedBoundingBox) mergeMany(temp2));
+            recursiveBuildTree(tree.rightChild, rightHalf);}
         }
     }
 
@@ -162,8 +167,9 @@ public class CollisionDetectionSystem {
         }
         x_value /= things.size();
         z_value /= things.size();
-
         Vector3f returnee = (max_x > max_z) ? new Vector3f(x_value, 0 , 0) : new Vector3f(0,0, z_value);
+        if (x_value == 0.0f) returnee = new Vector3f(0,0,z_value);
+        if (z_value == 0.0f) returnee = new Vector3f(x_value,0,0);
         return returnee;
     }
 
@@ -173,13 +179,15 @@ public class CollisionDetectionSystem {
         for (BoundingBox b : map.keySet()) if (b instanceof MovableBoundingBox) movableBoxes.add((MovableBoundingBox)b);
         boxesToHighlight.clear();
 
+
+
         //Moving vs Fixed collision test (contains a continue call)
         for (MovableBoundingBox mBox : movableBoxes) {
             FixedBoundingBox box2 = recursiveTreeCollide(bTree, mBox);
             if (box2 == null) continue; //not inside SceneEntity's personal BoundingBox
 
-            SceneEntity entity1 = map.getValueFromKey(mBox);
-            SceneEntity entity2 = map.getValueFromKey(box2);
+            SceneEntity entity1 = map.getFirstValueFromKey(mBox);
+            SceneEntity entity2 = map.getFirstValueFromKey(box2);
 
             if (entity1 instanceof Character) {
                 //Collide Triangles!
@@ -200,9 +208,9 @@ public class CollisionDetectionSystem {
                 }
 
                 long endTime = System.currentTimeMillis();
-                System.out.println("Triangle-Triangle Intersection tests performed: " + count);
+                //System.out.println("Triangle-Triangle Intersection tests performed: " + count);
                 long time = (endTime - startTime);
-                System.out.println("Time to do all that calculation: " + time + "ms");
+                //System.out.println("Time to do all that calculation: " + time + "ms");
 
                 if (collision){
                     entity1.moveDistance(shortestDirectionOut(entity1.getPosition(), entity2.getPosition(), false).normalize());    //normalized to move the offender out a little bit
@@ -222,20 +230,22 @@ public class CollisionDetectionSystem {
         for (MovableBoundingBox mBox : movableBoxes) {
             for (MovableBoundingBox mBox2 : movableBoxes) {
                 if (isColliding(mBox, mBox2)) {
-                    SceneEntity entity1 = map.getValueFromKey(mBox);
-                    SceneEntity entity2 = map.getValueFromKey(mBox2);
+
+                    SceneEntity entity1 = map.getFirstValueFromKey(mBox);
+                    SceneEntity entity2 = map.getFirstValueFromKey(mBox2);
 
                     if (entity1 instanceof Laser ) {
                         if (entity2 instanceof Player) {
                             if (((Laser) entity1).getID() == ((Player) entity2).getPlayerNum())
                                 continue;    //no collision should register since the player spawned the laser
                             ((Player) entity2).kill();
-                            System.out.println("Player "+((Player)entity2).getPlayerNum()+" died!");
+                            ((Laser) entity1).kill();
+                            if (((Laser) entity1).getID() == 0) AbstractWorld.increasePlayerScore();
+                            //System.out.println("Player "+((Player)entity2).getPlayerNum()+" died!");
                         }
                     }
 
-
-                    map.getValueFromKey(mBox).moveDistance(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, mBox2.minPoint, mBox2.maxPoint));
+                    map.getFirstValueFromKey(mBox).moveDistance(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, mBox2.minPoint, mBox2.maxPoint));
 
                 }
             }
@@ -246,8 +256,9 @@ public class CollisionDetectionSystem {
             //highlightIndivualBox(shader, mBox);
             //highlightIndivualBox(shader, groundBox);
             if (isColliding(mBox, groundBox)) {
-                SceneEntity entity1 = map.getValueFromKey(mBox);
-                SceneEntity entity2 = map.getValueFromKey(groundBox);
+
+                SceneEntity entity1 = map.getFirstValueFromKey(mBox);
+                SceneEntity entity2 = map.getFirstValueFromKey(groundBox);
                 //TODO: might want to restrict below move call to +y direction
                 entity1.moveDistance(shortestDistanceOut(mBox.minPoint, mBox.maxPoint, groundBox.minPoint, groundBox.maxPoint));
                 entity1.isOnGround = true;
@@ -283,7 +294,7 @@ public class CollisionDetectionSystem {
     private boolean isColliding(MovableBoundingBox mBox, BoundingBox box){
         if (checkEquivalence(mBox, box)) return false;
         //special check because Lasers are too speedy.
-        if (map.getValueFromKey(mBox) instanceof Laser) {return speedyObjectCollisionTest(mBox, box);
+        if (map.getFirstValueFromKey(mBox) instanceof Laser) {return speedyObjectCollisionTest(mBox, box);
             /*
             Laser l = (Laser)map.getValueFromKey(mBox);
             return (
@@ -302,7 +313,7 @@ public class CollisionDetectionSystem {
 
     private boolean speedyObjectCollisionTest(MovableBoundingBox mBox, BoundingBox box){
         //guarenteed to be a laser by a previous check //NOTE: this may change in the future
-        Laser laser = ((Laser) map.getValueFromKey(mBox));
+        Laser laser = ((Laser) map.getFirstValueFromKey(mBox));
         boolean output = Utilities.boxLineIntersection(box, laser.getPosition(), laser.getPrevPosition());
         return output;
     }
@@ -495,12 +506,14 @@ public class CollisionDetectionSystem {
     }
 
     private boolean checkEquivalence(MovableBoundingBox mBox, BoundingBox box){
-        return map.getKeyIndex(mBox) == map.getKeyIndex(box);
+        return map.getFirstKeyIndex(mBox) == map.getFirstKeyIndex(box);
     }
 
     private void updateMovingHitBoxes(){
         for (BoundingBox box : map.keySet()){
-            if (box instanceof MovableBoundingBox)  ((MovableBoundingBox) box).setPosition(map.getValueFromKey(box).getPosition());
+            if (box instanceof MovableBoundingBox)  {
+                ((MovableBoundingBox) box).setPosition(map.getFirstValueFromKey(box).getPosition());
+            }
         }
     }
 
@@ -508,7 +521,7 @@ public class CollisionDetectionSystem {
     ArrayList<Building> FixedHitBoxVisuals;
     ArrayList<Building> MovableHitBoxVisuals;
     ArrayList<Building> highlights;
-    public void drawBoundingBoxes(Shader shader, boolean boxHighlighting){
+    public void drawBoundingBoxes(boolean boxHighlighting){
         if (needsInit && boxHighlighting) highlights = new ArrayList<>();
         if (boxHighlighting) {
             highlights.clear();
@@ -533,15 +546,16 @@ public class CollisionDetectionSystem {
         }
         needsInit = false;
         //order matters. Lines that are drawn first will be shown.
-        if (boxHighlighting) for (Building b : highlights) b.renderOnlyLines(shader, new Vector3f(1,0,0));
-        for (Building b : MovableHitBoxVisuals) b.renderOnlyLines(shader, new Vector3f(1,0,1));
-        for (Building b : FixedHitBoxVisuals) b.renderOnlyLines(shader, new Vector3f(1,1,0));
+        shader.setUniform("ObjectToWorld", new Matrix4f());
+        if (boxHighlighting) for (Building b : highlights) b.renderOnlyLines(new Vector3f(1,0,0));
+        for (Building b : MovableHitBoxVisuals) b.renderOnlyLines(new Vector3f(1,0,1));
+        for (Building b : FixedHitBoxVisuals) b.renderOnlyLines(new Vector3f(1,1,0));
 
     }
 
-    private void highlightIndivualBox(Shader shader,BoundingBox b){
+    private void highlightIndivualBox(BoundingBox b){
         Building shape = createBoxObject(b);
-        shape.renderWithLines(shader, new Vector3f(0), new Vector3f(1));
+        shape.renderWithLines(new Vector3f(0), new Vector3f(1));
     }
 
     private static Building createBoxObject(BoundingBox box){

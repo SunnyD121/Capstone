@@ -58,16 +58,10 @@ public class StepPyramid extends CompositeShape {
         throw new IllegalArgumentException("Don't call StepPyramid.render(). Call StepPyramid.render(Shader, Matrix4f)");
     }
 
-    public void render(Shader shader, Matrix4f ObjectToWorld){
-        drawPrisms(shader, ObjectToWorld);
-        if (mirrored) drawMirroredPrisms(shader, ObjectToWorld);
+    public void render(Matrix4f ObjectToWorld){
+        drawPrisms(ObjectToWorld);
+        if (mirrored) drawMirroredPrisms(ObjectToWorld);
 
-    }
-
-    @Override
-    void render(Shader shader) {
-        System.err.println("StepPyramind: Unused.");
-        System.exit(-1);
     }
 
     @Override
@@ -97,7 +91,7 @@ public class StepPyramid extends CompositeShape {
         }
     }
 
-    private void drawPrisms(Shader shader, Matrix4f ObjectToWorld){
+    private void drawPrisms(Matrix4f ObjectToWorld){
         Matrix4f stepUp;
         Matrix4f OTWcopy;
         int limit = prisms.size();
@@ -116,7 +110,7 @@ public class StepPyramid extends CompositeShape {
         shader.setUniform("ObjectToWorld", ObjectToWorld);
     }
 
-    private void drawMirroredPrisms(Shader shader, Matrix4f ObjectToWorld){
+    private void drawMirroredPrisms(Matrix4f ObjectToWorld){
         Matrix4f stepDown;
         Matrix4f OTWcopy;
         int limit = prisms.size();

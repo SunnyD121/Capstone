@@ -1,6 +1,6 @@
 package Trash;
 
-import Core.InputNotifiee;
+import Core.InputSystem.GameInputs;
 import com.jogamp.newt.event.KeyEvent;
 
 import com.jogamp.newt.event.KeyListener;
@@ -23,7 +23,7 @@ public class UserInputConfig implements KeyListener, MouseListener{
         return userInputConfig;
     }
 
-    private static ArrayList<InputNotifiee> subscribers = new ArrayList<>();
+    private static ArrayList<GameInputs> subscribers = new ArrayList<>();
 
     private static ConcurrentLinkedQueue<Short> keysDown;
     private static HashMap<Short, Action> keyConfigMap;
@@ -91,7 +91,7 @@ public class UserInputConfig implements KeyListener, MouseListener{
             Action action = keyConfigMap.get(key);
             if (action != null){
                 //notify the subscribers
-                for (InputNotifiee s : subscribers){
+                for (GameInputs s : subscribers){
                     switch(action){
                         case move_forward: s.move_forward(); break;
                         case move_backward: s.move_backward(); break;
@@ -112,7 +112,7 @@ public class UserInputConfig implements KeyListener, MouseListener{
         }
 
         //mouseInput
-        for (InputNotifiee s : subscribers){
+        for (GameInputs s : subscribers){
             s.zoom(zoom_factor);    //TODO -efficiency: only notify if zoom_factor has changed.
         }
     }
@@ -121,7 +121,7 @@ public class UserInputConfig implements KeyListener, MouseListener{
         Action action = keyConfigMap.get(key);
         if (action == null) System.err.println("Key " + (char)key + " is not mapped to an action.");
         else {
-            for (InputNotifiee s : subscribers) {
+            for (GameInputs s : subscribers) {
                 switch (action) {
                     //case switch_mode: s.switch_mode(key - 48); break;
                     case pause: s.pause(); break;
@@ -131,7 +131,7 @@ public class UserInputConfig implements KeyListener, MouseListener{
     }
 
 
-    public static void addKeyPressListener(InputNotifiee subscriber){subscribers.add(subscriber);}
+    public static void addKeyPressListener(GameInputs subscriber){subscribers.add(subscriber);}
     public static void clearListeners(){subscribers.clear();}
 
     public static Short lookUpKeyBind(String s){

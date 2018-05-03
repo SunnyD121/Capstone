@@ -1,8 +1,8 @@
-package Core;
+package Core.InputSystem;
 
 import org.joml.Vector2f;
 
-public interface InputNotifiee {
+public interface GameInputs extends SuperInputs{
 
     //Keys
     void move_forward();

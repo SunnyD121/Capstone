@@ -15,7 +15,7 @@ public abstract class Character extends SceneEntity{
 
     public abstract void init();
 
-    public abstract void render(Shader shader);
+    public abstract void render();
 
     public Vector3f getPosition(){
         return new Vector3f(position);

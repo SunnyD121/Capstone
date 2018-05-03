@@ -141,7 +141,7 @@ public class Cone extends TriangleMesh {
     }
 
 
-    public void render(Shader shader, Matrix4f ObjectToWorld){
+    public void render(Matrix4f ObjectToWorld){
         if (capped) {
             Matrix4f temp = new Matrix4f();
             ObjectToWorld.rotate((float)Math.toRadians(180), 0, 1, 0, temp);

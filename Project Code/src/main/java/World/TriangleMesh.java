@@ -19,7 +19,6 @@ import static Core.GLListener.gl;
  * Created by (User name) on 7/25/2017.
  */
 public abstract class TriangleMesh extends SceneEntity {
-
     protected int vao = 0;
     protected int elements = 0;
     protected int[] buffers;
@@ -33,17 +32,17 @@ public abstract class TriangleMesh extends SceneEntity {
             gl.glBindVertexArray(0);
         }
         else{
-            System.err.println("Rendering unsuccessful; vao = 0");
+            System.err.println("Rendering unsuccessful; vao = 0 (You forgot to .init() something)");
             System.exit(-1);
         }
     }
 
-    public void render(Shader shader, Matrix4f m){
+    public void render(Matrix4f m){
         System.err.println("This is an error. Why have you come here?");
     }
-    public void render(Shader shader, Vector3f v1, Vector3f v2){System.err.println("This is an error. Why have you come here?");}
+    public void render(Vector3f v1, Vector3f v2){System.err.println("This is an error. Why have you come here?");}
 
-    public void renderWithLines(Shader shader, Vector3f color, Vector3f lineColor){
+    public void renderWithLines(Vector3f color, Vector3f lineColor){
         Material m = new Material();
 
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL);
@@ -60,7 +59,7 @@ public abstract class TriangleMesh extends SceneEntity {
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL);
     }
 
-    public void renderOnlyLines(Shader shader, Vector3f lineColor){
+    public void renderOnlyLines(Vector3f lineColor){
         Material m = new Material();
 
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE);

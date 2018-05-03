@@ -46,6 +46,10 @@ public class Prism extends TriangleMesh {
         return length;
     }
 
+    public static float getRadiusFromSideLength(float sideLength, int sides){
+        return sideLength / (2 * (float)Math.cos(Math.toRadians(180) / sides));
+    }
+
     @Override
     public void init(){
         if (vao != 0) return;

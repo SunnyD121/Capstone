@@ -6,9 +6,9 @@ layout(location=2) in vec4 vNormal;
 layout(location=4) in vec2 vTexCoord;
 
 uniform mat4 ObjectToWorld; //for converting from shape space to world space
-uniform mat4 Projection;    //TODO: remember what this is for. Something about necessary further down graphics pipeline.
+uniform mat4 Projection;    //Projects 3D image to a 2D one.
 uniform mat4 WorldToEye;    //for converting from world space to camera space (where we render the scene from)
-uniform mat4 ShadowMatrix;  //for computing the location of shadow...?  //TODO: Investigate this.
+uniform mat4 ShadowMatrix;  //for computing the location of shadow...or something like that
 
 //return variables; must match in vars @.frag.glsl
 out vec3 normal;

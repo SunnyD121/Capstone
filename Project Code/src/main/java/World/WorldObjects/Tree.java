@@ -28,13 +28,7 @@ public class Tree extends CompositeShape {
         top.init();
     }
 
-    @Override
     public void render(){
-        System.err.println("Call Tree.render(Shader) instead.");
-        System.exit(-1);
-    }
-
-    public void render(Shader shader){
         Matrix4f rotation = new Matrix4f();
         rotation.rotateX((float)Math.toRadians(-90), rotation);
 

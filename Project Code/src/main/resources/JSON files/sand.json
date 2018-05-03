@@ -1,0 +1,130 @@
+{
+  "playerStartPosition" : [50,0,50],
+  "spawnLocations" : [
+    [100,0,-40],
+    [100,0,-30],
+    [100,0,-20],
+    [100,0,-10],
+    [100,0,0],
+    [100,0,10],
+    [100,0,20],
+    [100,0,30],
+    [100,0,40],
+    [90, 0, 0]
+  ],
+  "debugPosition" : [100,20,100],
+  "bbox" : [-120,0,-120,120,10,120],
+
+  "steppyramids" : [
+    {
+      "position" : [-100, 0, -100],
+      "baselength" : 40,
+      "stepheight" : 0.5,
+      "stepshrink" : 1,
+      "mirrored" : false
+    },
+    {
+      "position" : [-100, 0, 100],
+      "baselength" : 40,
+      "stepheight" : 0.5,
+      "stepshrink" : 1,
+      "mirrored" : false
+    },
+    {
+      "position" : [100, 0, 100],
+      "baselength" : 40,
+      "stepheight" : 0.5,
+      "stepshrink" : 1,
+      "mirrored" : false
+    },
+    {
+      "position" : [100, 0, -100],
+      "baselength" : 40,
+      "stepheight" : 0.5,
+      "stepshrink" : 1,
+      "mirrored" : false
+    },
+    {
+      "position" : [0, 0, 0],
+      "baselength" : 75,
+      "stepheight" : 0.5,
+      "stepshrink" : 1,
+      "mirrored" : false
+    }
+  ],
+
+  "obelisks" : [
+    {
+      "position" : [0,0,75],
+      "baselength" : 1,
+      "height" : 15
+    },
+    {
+      "position" : [75,0,0],
+      "baselength" : 1,
+      "height" : 15
+    },
+    {
+      "position" : [0,0,-75],
+      "baselength" : 1,
+      "height" : 15
+    },
+    {
+      "position" : [-75,0,0],
+      "baselength" : 1,
+      "height" : 15
+    }
+  ],
+
+  "cacti" : [
+    { "position" : [66,0,-104], "size" : 5},
+    { "position" : [-40,0,64], "size" : 4},
+    { "position" : [-66,0,108], "size" : 3},
+    { "position" : [-57,0,28], "size" : 5},
+    { "position" : [30,0,50], "size" : 4},
+    { "position" : [24,0,85], "size" : 3},
+    { "position" : [-13,0,-86], "size" : 5},
+    { "position" : [2,0,67], "size" : 6},
+    { "position" : [43,0,15], "size" : 4},
+    { "position" : [-12,0,88], "size" : 3},
+    { "position" : [27,0,-59], "size" : 4},
+    { "position" : [-47,0,35], "size" : 5},
+    { "position" : [-8,0,81], "size" : 5},
+    { "position" : [43,0,59], "size" : 4},
+    { "position" : [18,0,44], "size" : 3},
+    { "position" : [-94,0,-41], "size" : 3},
+    { "position" : [32,0,60], "size" : 4},
+    { "position" : [12,0,99], "size" : 4},
+    { "position" : [85,0,73], "size" : 5},
+    { "position" : [107,0,77], "size" : 5},
+    { "position" : [49,0,-101], "size" : 6},
+    { "position" : [41,0,-96], "size" : 5},
+    { "position" : [13,0,105], "size" : 4},
+    { "position" : [82,0,36], "size" : 3},
+    { "position" : [-100,0,2], "size" : 4},
+    { "position" : [-104,0,74], "size" : 5},
+    { "position" : [70,0,-71], "size" : 3},
+    { "position" : [-2,0,-52], "size" : 4},
+    { "position" : [-31,0,46], "size" : 5},
+    { "position" : [50,0,75], "size" : 6},
+    { "position" : [94,0,-24], "size" : 6},
+    { "position" : [47,0,-50], "size" : 4},
+    { "position" : [-23,0,-81], "size" : 3},
+    { "position" : [-45,0,-45], "size" : 4},
+    { "position" : [-14,0,-78], "size" : 5},
+    { "position" : [-40,0,-7], "size" : 5},
+    { "position" : [-100,0,-3], "size" : 5},
+    { "position" : [-73,0,2], "size" : 3},
+    { "position" : [-56,0,-2], "size" : 3},
+    { "position" : [-70,0,-5], "size" : 3},
+    { "position" : [-66,0,-8], "size" : 4},
+    { "position" : [-80,0,-10], "size" : 6},
+    { "position" : [80,0,0], "size" : 6}
+
+  ],
+
+  "weather" : {
+    "sunLightDirection" : [ 0.4, 1.0, 0.6 ]
+  }
+
+}

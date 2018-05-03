@@ -1,30 +1,30 @@
 package Core;
 
-import Core.CollisionDetectionSystem.BoundingBox;
-import Core.CollisionDetectionSystem.CollisionDetectionSystem;
-import Core.CollisionDetectionSystem.FixedBoundingBox;
+import Core.InputSystem.InputHandler;
 import com.jogamp.newt.event.WindowAdapter;
 import com.jogamp.newt.event.WindowEvent;
 import com.jogamp.newt.opengl.GLWindow;
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
+import com.jogamp.opengl.util.Animator;
 import com.jogamp.opengl.util.FPSAnimator;
-import org.joml.Vector3f;
 
 public class Main {
 
     /*
+    TODO:
     Fiddle with the light equations in the shaders, dont make color so additive. (lamp vs sun isnt additive, it has a diminished return irl)
     Look into SSAO Screen space Ambient Occlusion for realistic ambient lighting.
     */
 
     public static void main(String[] args) {
-        function(args);
-        //testFunction();
+        boolean test = true;
+        test = false;
+        if (!test)function(args);
+        else testFunction();
 
     }
     private static void testFunction(){
-
     }
 
     public static void function(String [] args){
@@ -42,7 +42,7 @@ public class Main {
         glWindow.setTitle("Capstone Project");
 
         //add Listeners
-        GLListener gl = new GLListener();
+        GLListener gl = GLListener.getInstance();
         // Connect to main listener
         glWindow.addGLEventListener(gl);
         // add keyListener

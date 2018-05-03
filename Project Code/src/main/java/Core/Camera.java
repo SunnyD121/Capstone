@@ -10,21 +10,21 @@ public class Camera {
 
     private Vector3f position;
     private Vector3f u, v, n;   //Camera's x, y, and z axes, respectively.
-    float fovy;
-    float nearPlane, farPlane;
-    float aspect;
+    private float fovy;
+    private float nearPlane, farPlane;
+    private float aspect;
     //for ortho projections:
-    float nearX,nearY,nearZ,farX,farY,farZ;
-    Vector3f lookAt, up;
+    private float nearX,nearY,nearZ,farX,farY,farZ;
+    private Vector3f lookAt, up;
 
-    ProjectionType pType;
+    private ProjectionType pType;
 
     public enum ProjectionType{
         PERSPECTIVE, ORTHO
     }
 
     public Camera(ProjectionType type){
-        setViewVolume(45.0f, 1.0f, 1.0f, 1000.0f);   //far is the max render distance!
+        setViewVolume(45.0f, 1.0f, 1.0f, 100000.0f);   //far is the max render distance!
         u = new Vector3f();
         v = new Vector3f();
         n = new Vector3f();
@@ -151,6 +151,10 @@ public class Camera {
 
     public Vector3f getN(){
         return new Vector3f(n);
+    }
+
+    public void updateAspect(float newAspect){
+        this.aspect = newAspect;
     }
 
 }

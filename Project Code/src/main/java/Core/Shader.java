@@ -31,7 +31,14 @@ public class Shader {
     private final int TESS_CONTROL = gl.GL_TESS_CONTROL_SHADER;
     private final int TESS_EVALUATION = gl.GL_TESS_EVALUATION_SHADER;
 
-    public Shader(){
+    private static Shader shader;
+
+    public static Shader getInstance(){
+        if (shader == null) shader = new Shader();
+        return shader;
+    }
+
+    private Shader(){
 
     }
 
@@ -148,6 +155,36 @@ public class Shader {
         gl.glUniform1f(getUniformLocation(name), val);
     }
 
+    public void nullifyUniforms(){
+        //vertex Shader
+        setUniform("ObjectToWorld",new Matrix4f());
+        setUniform("Projection", new Matrix4f());
+        setUniform("WorldToEye",new Matrix4f());
+        setUniform("ShadowMatrix",new Matrix4f());
+        //fragment Shader
+        setUniform("lightCount",0);
+        for (int i=0;i<100;i++) shader.setUniform("lights["+i+"]", new Vector3f());
+        setUniform("lampIntensity", new Vector3f(0));
+        setUniform("numAIPlayers",0);
+        for (int i=0;i<11;i++)for (int j=0;j<10;j++) setUniform("laserPositions["+i+"]["+j+"]", new Vector3f());
+        for (int i=0;i<11;i++) setUniform("numLiveLasers[]", 0);
+        for (int i=0;i<11;i++) setUniform("laserIntensity["+i+"]", new Vector3f());
+        setUniform("flashLocation", new Vector3f());
+        setUniform("flashColor", new Vector3f());
+        setUniform("flashIntensity", 0);
+        setUniform("Kd", new Vector3f());
+        setUniform("Ks", new Vector3f());
+        setUniform("Ka", new Vector3f());
+        setUniform("shine", 0);
+        setUniform("emission", new Vector3f());
+        setUniform("sunDirection", new Vector3f());
+        setUniform("sunIntensity", new Vector3f());
+        setUniform("textureAlpha", 1);
+        setUniform("tex", 0);
+        setUniform("shadowMap", 0);
+        System.out.println("SHADER RESET.");
+    }
+    
     private String getFileContents(final String fileName) throws ShaderException{
         BufferedReader reader = null;
         try{

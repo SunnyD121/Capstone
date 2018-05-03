@@ -68,7 +68,7 @@ public class HumanModel extends CharacterModel {
         throw new IllegalArgumentException("Don't call HumanModel.render(). Call HumanModel.render(Shader, Matrix4f)");
     }
 
-    public void render(Shader shader, Matrix4f O2W){
+    public void render(Matrix4f O2W){
         Matrix4f temp = new Matrix4f();
         /* render body */
         O2W.rotateX((float)Math.toRadians(-90), temp);
@@ -139,12 +139,6 @@ public class HumanModel extends CharacterModel {
         shader.setUniform("ObjectToWorld", temp);
         transformMap.put(rightHand, temp);
         rightHand.render();
-    }
-
-    @Override
-    void render(Shader shader) {
-        System.err.println("HumanModel.java: Unused.");
-        System.exit(-1);
     }
 
     @Override

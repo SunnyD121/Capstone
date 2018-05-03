@@ -13,6 +13,7 @@ import javax.swing.text.MaskFormatter;
 public abstract class Particle extends SceneEntity{
     //protected Vector3f location;
     //protected Vector3f direction;
+    protected int maxLifeSpan;
     protected Vector3f velocity;
     protected Vector3f acceleration;
     protected float lifespan;
@@ -37,7 +38,7 @@ public abstract class Particle extends SceneEntity{
         lifespan -= 1;
     }
 
-    public void render(Shader shader){
+    public void render(){
         transform = Utilities.setLocationAndDirectionManually(getPosition(), getDirection());
         shader.setUniform("ObjectToWorld", transform);    //move particle from shapeview to location
         particleShape.render();
@@ -54,13 +55,15 @@ public abstract class Particle extends SceneEntity{
         lifespan = 0;
     }
 
+    public abstract void renew(Vector3f emitterPos);
+
     public void setLifespan(int newValue){
         lifespan = newValue;
     }
 
-    public void run(Shader shader){
-        update();
-        render(shader);
+    public void run(boolean pureDraw){
+        if (!pureDraw) update();
+        render();
     }
 
     @Override

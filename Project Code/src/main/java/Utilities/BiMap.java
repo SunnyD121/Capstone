@@ -1,7 +1,6 @@
 package Utilities;
 
 import java.util.ArrayList;
-import java.util.Map;
 
 public class BiMap<K,V> {
 
@@ -16,36 +15,84 @@ public class BiMap<K,V> {
         if (keys.size() != values.size()) error("Length Mismatch error at BiMap.BiMap(): BiMap is unbalanced.");
     }
 
-    public K getKeyFromValue(V value){
-        int i = values.indexOf(value);
-        if (i != -1) return keys.get(values.indexOf(value));
-        else return null;
+    public ArrayList<K> getKeyFromValue(V value){
+        int matches = 0;
+        int[] matchIndex = new int[values.size()];
+        for (int i = 0; i < values.size(); i++){
+            if (values.get(i).equals(value)){
+                matches++;
+                matchIndex[i] = i+1;
+            }
+        }
+        if (matches == 0) return null;
+        ArrayList<K> array = new ArrayList<>();
+        for (int a = 0,i = 0; i < matchIndex.length; i++){
+            if (matchIndex[i] != 0) array.add(a++, keys.get(matchIndex[i]-1) );
+        }
+        return array;
     }
 
-    //TODO: figure out how to fix bug where if there are duplicates in the data structure, how to get the right one.
+    public K getFirstKeyFromValue(V value){
+        ArrayList<K> occurences = getKeyFromValue(value);
+        if (occurences == null) return null;
+        else return occurences.get(0);
+    }
 
-    public V getValueFromKey(K key){
-        int i = keys.indexOf(key);
-        if (i != -1) return values.get(i);
-        else return null;
+
+    public ArrayList<V> getValueFromKey(K key){
+        int matches = 0;
+        int[] matchIndex = new int[keys.size()];
+        for (int i = 0; i < keys.size(); i++){
+            if (keys.get(i).equals(key)){
+                matches++;
+                matchIndex[i] = i+1;
+            }
+        }
+        if (matches == 0) return null;
+        ArrayList<V> array = new ArrayList<>();
+        for (int a = 0,i = 0; i < matchIndex.length; i++){
+            if (matchIndex[i] != 0) array.add(a++, values.get(matchIndex[i]-1) );
+        }
+        return array;
+    }
+
+    public V getFirstValueFromKey(K key){
+        ArrayList<V> occurences = getValueFromKey(key);
+        if (occurences == null) return null;
+        else return occurences.get(0);
     }
 
     public void removeKey(K key){
-        int i = keys.indexOf(key);
-        if (i == -1) return;    //key was not in the arraylist
-        keys.remove(i);
-        values.remove(i);
+        for (int i = 0; i < keys.size(); i++){
+            if (keys.get(i).equals(key)){
+                keys.remove(i);
+                values.remove(i);
+            }
+        }
 
         if (keys.size() != values.size()) error("Length Mismatch error at BiMap.removeKey(): BiMap is unbalanced.");
     }
 
     public void removeValue(V value){
-        int i = values.indexOf(value);
-        if (i == -1) return;    //value was not in the arraylist
-        keys.remove(i);
-        values.remove(i);
+        for (int i = 0; i < values.size(); i++){
+            if (values.get(i).equals(value)){
+                keys.remove(i);
+                values.remove(i);
+            }
+        }
 
         if (keys.size() != values.size()) error("Length Mismatch error at BiMap.removeValue(): BiMap is unbalanced.");
+    }
+
+    public void removePair(K key, V value){
+        for (int i = 0; i < values.size(); i++){
+            if (values.get(i).equals(value) && keys.get(i).equals(key)){
+                keys.remove(i);
+                values.remove(i);
+            }
+        }
+
+        if (keys.size() != values.size()) error("Length Mismatch error at BiMap.removePair(): BiMap is unbalanced.");
     }
 
     public void put(K key, V value){
@@ -68,8 +115,52 @@ public class BiMap<K,V> {
         return values;
     }
 
-    public int getKeyIndex(K key){ return keys.indexOf(key);}
-    public int getValueIndex(V value) { return values.indexOf(value);}
+    public ArrayList<Integer> getKeyIndex(K key){
+        int matches = 0;
+        int[] matchIndex = new int[keys.size()];
+        for (int i = 0; i < keys.size(); i++){
+            if (keys.get(i).equals(key)){
+                matches++;
+                matchIndex[i] = i+1;
+            }
+        }
+        if (matches == 0) return null;
+        ArrayList<Integer> array = new ArrayList<>();
+        for (int a = 0,i = 0; i < matchIndex.length; i++){
+            if (matchIndex[i] != 0) array.add(a++, matchIndex[i]-1);
+        }
+        return array;
+    }
+    public int getFirstKeyIndex(K key){
+        //return keys.indexOf(key);
+        ArrayList<Integer> indices = getKeyIndex(key);
+        if (indices == null) return -1;
+        else return indices.get(0);
+    }
+
+    public ArrayList<Integer> getValueIndex(V value) {
+        int matches = 0;
+        int[] matchIndex = new int[values.size()];
+        for (int i = 0; i < values.size(); i++){
+            if (values.get(i).equals(value)){
+                matches++;
+                matchIndex[i] = i+1;
+            }
+        }
+        if (matches == 0) return null;
+        ArrayList<Integer> array = new ArrayList<>();
+        for (int a = 0,i = 0; i < matchIndex.length; i++){
+            if (matchIndex[i] != 0) array.add(a++, matchIndex[i]-1);
+        }
+        return array;
+    }
+
+    public int getFirstValueIndex(V value){
+        //return keys.indexOf(value);
+        ArrayList<Integer> indices = getValueIndex(value);
+        if (indices == null) return -1;
+        else return indices.get(0);
+    }
 
     private void error(String message){
         System.err.println(message);

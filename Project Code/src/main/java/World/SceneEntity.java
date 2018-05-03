@@ -1,13 +1,15 @@
 package World;
 
+import Core.Shader;
 import World.AbstractShapes.Triangle;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
 
 public abstract class SceneEntity {
-    Vector3f position;
-    Vector3f direction;
+    public static Shader shader = Shader.getInstance();
+    protected Vector3f position;
+    protected Vector3f direction;
     protected Triangle[] triangles;
     public boolean isAffectedByGravity = false;
     public boolean isOnGround = true;

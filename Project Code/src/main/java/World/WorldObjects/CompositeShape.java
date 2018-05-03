@@ -18,10 +18,6 @@ import java.util.HashMap;
 public abstract class CompositeShape extends TriangleMesh {
     protected HashMap<SceneEntity, Matrix4f> transformMap = new HashMap<>();
 
-    public void render(){
-        System.err.println("CompositeShape: Don't call render with zero args.");
-        System.exit(-1);
-    }
 
     Triangle[] transformTriangleArray(Triangle[] triangles, Matrix4f mat){
         Triangle[] temp = new Triangle[triangles.length];
@@ -40,5 +36,5 @@ public abstract class CompositeShape extends TriangleMesh {
         }
         return temp;
     }
-    abstract void render(Shader shader);
+    public abstract void render();
 }

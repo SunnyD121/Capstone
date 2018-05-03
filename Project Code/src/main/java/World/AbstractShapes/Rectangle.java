@@ -14,12 +14,19 @@ import java.nio.IntBuffer;
 public class Rectangle extends TriangleMesh {
 
     private Vector3f[] p;
+    private float tex[] = {0.0f, 0.0f, 5.0f, 0.0f, 5.0f, 5.0f, 0.0f, 5.0f};
 
     //points must be counterclockwise!
     public Rectangle(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f p4){
         p = new Vector3f[4];
         setVertexData(p1, p2, p3, p4);
         setPosition(interpolateCenter());
+    }
+    public Rectangle(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f p4, float[] textureCoordinates){
+        p = new Vector3f[4];
+        setVertexData(p1, p2, p3, p4);
+        setPosition(interpolateCenter());
+        this.tex = textureCoordinates;
     }
 
     @Override
@@ -65,8 +72,6 @@ public class Rectangle extends TriangleMesh {
         indices[3] = 0;
         indices[4] = 2;
         indices[5] = 3;
-
-        float[] tex = {0.0f, 0.0f, 5.0f, 0.0f, 5.0f, 5.0f, 0.0f, 5.0f};
 
         //Triangles, for use in collision detection
         triangles = new Triangle[indices.length/3];

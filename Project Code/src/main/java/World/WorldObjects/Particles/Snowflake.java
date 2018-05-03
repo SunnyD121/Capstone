@@ -3,6 +3,7 @@ package World.WorldObjects.Particles;
 import Core.CollisionDetectionSystem.CollisionDetectionSystem;
 import Core.Shader;
 import World.AbstractShapes.BillBoardQuad;
+import World.AbstractShapes.Cube;
 import World.AbstractShapes.Triangle;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -24,16 +25,28 @@ public class Snowflake extends Particle {
         velocity = new Vector3f(xFactor,-1 * 2, zFactor);
         acceleration = new Vector3f(xFactor * 0.1f, -2 * 0.1f, zFactor * 0.1f).div(4);
 
-        lifespan = 200;
+        maxLifeSpan = 100;
+        lifespan = maxLifeSpan;
 
     }
-    //NOTE: Snowflake.java had to overload render() and run() from superclass Particle.java because Snowflake's particleShape
-    //          requires a custom render call instead of the default TriangleMesh one.
-    public void render(Shader shader, Matrix4f O2W, Vector3f cameraPosition){
+
+    @Override
+    public void renew(Vector3f emitterPos) {
+        setPosition( new Vector3f(((float)Math.random() - 0.5f) * 200, 0, ((float)Math.random() -0.5f) * 200) );   //spread out over plane of 100,0,100
+        setPosition(getPosition().add(emitterPos));  //move to emitter position
+
+        float xFactor = (float)Math.random() * 2 - 1;
+        float zFactor = (float)Math.random() * 2 - 1;
+        velocity = new Vector3f(xFactor,-1 * 2, zFactor);
+
+        lifespan = maxLifeSpan;
+    }
+
+    public void render(Matrix4f O2W, Vector3f cameraPosition){
         O2W.translate(getPosition());
         shader.setUniform("ObjectToWorld", O2W);
         //Guarenteed to be a billboard.
-        particleShape.render(shader, new Vector3f(O2W.m30(), O2W.m31(), O2W.m32()), cameraPosition);
+        particleShape.render(new Vector3f(O2W.m30(), O2W.m31(), O2W.m32()), cameraPosition);
     }
 
     @Override
@@ -47,9 +60,9 @@ public class Snowflake extends Particle {
         System.exit(-1);
     }
 
-    public void run(Shader shader, Matrix4f ObjectToWorld, Vector3f cameraPosition){
-        update();
-        render(shader, ObjectToWorld, cameraPosition);
+    public void run(Matrix4f ObjectToWorld, Vector3f cameraPosition, boolean pureDraw){
+        if (!pureDraw)update();
+        render(ObjectToWorld, cameraPosition);
     }
 
     @Override

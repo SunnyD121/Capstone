@@ -26,8 +26,23 @@ public class Laser extends Particle{
         emitterLocation.sub(getPosition().sub(velocity.mul(0.1f, new Vector3f()), new Vector3f()), offset);
         previousLocation = new Vector3f(offset);
 
-        lifespan = 100;
+        maxLifeSpan = 100;
+        lifespan = maxLifeSpan;
+
         this.iD = iD;
+        super.moreConstruction();
+    }
+
+    @Override
+    public void renew(Vector3f emitterPos) {
+        setPosition(emitterPos);
+        velocity = new Vector3f(getDirection().mul(75.0f, new Vector3f()));
+
+        Vector3f offset = new Vector3f();
+        this.position.sub(getPosition().sub(velocity.mul(0.1f, new Vector3f()), new Vector3f()), offset);
+        previousLocation = new Vector3f(offset);
+
+        lifespan = maxLifeSpan;
         super.moreConstruction();
     }
 

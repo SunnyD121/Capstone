@@ -1,6 +1,6 @@
 package GUI;
 
-import Core.InputHandler;
+import Core.InputSystem.InputHandler;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,7 +17,6 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
     private JComboBox<String> comboBox;
 
     private boolean isListeningForKeyEvents = false;
-    //private boolean hasChanged = false;     //TODO: this seems like duct tape error checking. TO prevent
     private String currentItemSelected = null;
     private int newKeyCode;
 
@@ -36,9 +35,12 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
                 "Move Forward", "Move Backward", "Move Left" , "Move Right",
                 "Turn Left", "Turn Right",
                 "Jump",
-                "Shoot",
-                "Pause"
+                "Shoot"
         };
+
+        currentItemSelected = "Move Forward";
+        updateGui(currentItemSelected);
+
         comboBox = new JComboBox<>(comboBoxItems);
         comboBox.addItemListener(new BoxItemSelect());
 
@@ -46,6 +48,8 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
         this.add(topPanel, BorderLayout.NORTH);
         this.add(centerPanel, BorderLayout.CENTER);
         this.add(southLabel, BorderLayout.SOUTH);
+
+        this.setAlwaysOnTop(true);
         this.setVisible(true);
     }
 
@@ -116,6 +120,7 @@ public class ChangeKeyBindings extends JFrame implements KeyListener {
             InputHandler.changeKeyBinding(currentItemSelected, (short) newKeyCode);  //NOTE: beware the conversion from int to short.
             apply.setEnabled(false);
             southLabel.setText("");
+            updateGui(currentItemSelected);
         }
     }
 }

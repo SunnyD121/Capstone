@@ -6,13 +6,18 @@
 ///// = for temporary testing. Remove when no longer needed.
 
 //uniform vec4 color = vec4(1,0,0,1);
-uniform vec3 lights[12];    //the light of the lamps' positions.
+const int maxLightCount = 100;
+uniform int lightCount;
+uniform vec3 lights[maxLightCount];    //the light of the lamps' positions.
 uniform vec3 lampIntensity;
 const int maxAIPlayers = 10;       //number of AI players in the game
 uniform int numAIPlayers;
 uniform vec3 laserPositions[maxAIPlayers+1][10];  //position of laser's light, max 10 lasers before auto-death
 uniform int numLiveLasers[maxAIPlayers+1];      //the amount of lasers that are actually alive
 uniform vec3 laserIntensity[maxAIPlayers+1];
+uniform vec3 flashLocation;     //where flash occurs
+uniform vec3 flashColor;    //color of flash
+uniform float flashIntensity;
 uniform vec3 Kd;  // Diffuse reflectivity
 uniform vec3 Ks;
 uniform vec3 Ka;
@@ -20,7 +25,9 @@ uniform float shine;
 uniform vec3 emission;          //how much light is emitted.
 uniform vec3 sunDirection;      //direction the sun beams down
 uniform vec3 sunIntensity;      //how strong the sun is
+uniform float textureAlpha;
 uniform sampler2D tex;
+//uniform sampler2D testTexture[2];
 uniform sampler2DShadow shadowMap;
 
 vec3 ambientIntensity = vec3(0.05f);    //how strong the ambient light of the scene is. (alternative to sun?)
@@ -35,6 +42,11 @@ out vec4 fragColor;
 
 //NOTE: functions must be declared first before they can be used. Order matters.
 
+void error(){
+    fragColor = vec4(1,0,1,1);
+    return;
+}
+
 //Find max of r g b of a single light, and set all three values to {r,g,b}/max, so that the object in light retains color information.
 vec3 lightWashOut(vec3 color){
     float max = 1;
@@ -46,7 +58,7 @@ vec3 lightWashOut(vec3 color){
     return vec3(color.x/max, color.y/max, color.z/max);
 }
 
-vec3 convertLightLocation(vec3 loc){        //takes the World Location and converts it to the Eye Location
+vec3 convertLightLocation(vec3 loc){        //takes the AbstractWorld Location and converts it to the Eye Location
     vec4 temp = vec4(loc, 1.0f);
     temp = WorldToEyeMatrix * temp;
     return temp.xyz;
@@ -74,6 +86,8 @@ subroutine (renderPassType) void renderScene(){
     bool debugR = false;
     bool debugG = false;
     bool debugB = false;
+    if (numAIPlayers > maxAIPlayers) error();
+    if (lightCount > maxLightCount) error();
     //if (!gl_FrontFacing)
         //discard;    //culls fragments that are being viewed from places players aren't meant to be.
         //EDIT: the above is handled in GLListener.java
@@ -123,12 +137,18 @@ subroutine (renderPassType) void renderScene(){
             vec3 lightPos = convertLightLocation(laserPositions[a][i]);
 
             float d = length(lightPos - eyePos);
-            vec3 l = normalize(lightPos - eyePos);
-            vec3 h = normalize(l + v);
+            //vec3 l = normalize(lightPos - eyePos);
+            //vec3 h = normalize(l + v);
 
             color += lightEquation2(laserIntensity[a], d);
         }
     }
+
+    //deathflash
+    vec3 lightPos = convertLightLocation(flashLocation);
+    float d = length(lightPos - eyePos);
+    color += lightEquation2(flashColor*flashIntensity, d);
+
 
     if (debugR || debugG || debugB) color = vec3(0,0,0);
     if (debugR) color += vec3(1,0,0);
@@ -141,8 +161,16 @@ subroutine (renderPassType) void renderScene(){
 subroutine (renderPassType) void createShadows(){
     //do nothing?
 }
+subroutine (renderPassType) void menuScreen(){
+
+    //fragColor = vec4((texture(tex, texCoords).xyz), textureAlpha);
+    vec4 color = texture(tex, texCoords);
+    if (color.w == 1) color.w = textureAlpha;
+    fragColor = color;
+
+}
 
 void main() {
-    //calls either createShadows or renderScene, based on which renderPass is given, from the java code.
+    //calls either createShadows or renderScene or menuScreen, based on which renderPass is given, from the java code.
     renderPass();
 }
