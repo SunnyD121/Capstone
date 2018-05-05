@@ -1,15 +1,12 @@
 package Core;
 
 import Core.InputSystem.*;
-import Core.Screens.GameOverScreen;
-import Core.Screens.LevelSelectScreen;
-import Core.Screens.PauseScreen;
-import Core.Screens.SplashScreen;
-import GUI.ChangeKeyBindings;
-import GUI.PauseMenu;
+import GUI.Screens.GameOverScreen;
+import GUI.Screens.LevelSelectScreen;
+import GUI.Screens.PauseScreen;
+import GUI.Screens.SplashScreen;
 
 //import com.jogamp.opengl.*;
-import World.AbstractShapes.Cube;
 import com.jogamp.opengl.GLEventListener;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GL4;

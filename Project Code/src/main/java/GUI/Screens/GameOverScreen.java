@@ -1,4 +1,4 @@
-package Core.Screens;
+package GUI.Screens;
 
 import Core.GLListener;
 import Core.InputSystem.InputHandler;

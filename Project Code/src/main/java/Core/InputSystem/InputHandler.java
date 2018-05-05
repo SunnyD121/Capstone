@@ -104,14 +104,14 @@ public class InputHandler implements KeyListener, MouseListener {
             events.put(move_backward, ()->((GameInputs)notifiee).move_backward());
             events.put(move_left, ()->((GameInputs)notifiee).move_left());
             events.put(move_right,()->((GameInputs)notifiee).move_right());
-            events.put(move_up,()->((GameInputs)notifiee).move_up());
-            events.put(move_down,()->((GameInputs)notifiee).move_down());
+            //events.put(move_up,()->((GameInputs)notifiee).move_up());
+            //events.put(move_down,()->((GameInputs)notifiee).move_down());
             events.put(turn_left,()->((GameInputs)notifiee).turn_left());
             events.put(turn_right,()->((GameInputs)notifiee).turn_right());
             events.put(jump,()->((GameInputs)notifiee).jump());
             events.put(switch_mode_normal,()->((GameInputs)notifiee).switch_mode_normal());
             events.put(switch_mode_debug,()->((GameInputs)notifiee).switch_mode_debug());
-            events.put(switch_mode_sun, ()->((GameInputs)notifiee).switch_mode_sun());
+            //events.put(switch_mode_sun, ()->((GameInputs)notifiee).switch_mode_sun());
             events.put(pause,()->((GameInputs)notifiee).pause());
             events.put(shoot, ()->((GameInputs)notifiee).shoot());
         }

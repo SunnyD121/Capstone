@@ -1,4 +1,4 @@
-package Core.Screens;
+package GUI.Screens;
 
 import Core.Shader;
 import com.jogamp.opengl.util.texture.TextureData;

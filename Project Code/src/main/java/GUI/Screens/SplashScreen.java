@@ -1,17 +1,8 @@
-package Core.Screens;
+package GUI.Screens;
 
 import Core.Shader;
 import World.AbstractShapes.Rectangle;
-import World.AbstractShapes.Triangle;
-import World.TriangleMesh;
-import com.jogamp.opengl.util.texture.TextureData;
-import com.jogamp.opengl.util.texture.TextureIO;
-import org.joml.Matrix4f;
 import org.joml.Vector3f;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.IntBuffer;
 
 import static Core.GLListener.gl;
 import static com.jogamp.opengl.GL.*;

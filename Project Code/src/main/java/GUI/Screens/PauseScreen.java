@@ -1,14 +1,12 @@
-package Core.Screens;
+package GUI.Screens;
 
 import Core.Shader;
 import GUI.ChangeKeyBindings;
 import World.AbstractShapes.Rectangle;
-import com.jogamp.opengl.GL2ES2;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import static Core.GLListener.gl;
-import static com.jogamp.opengl.GL.GL_COLOR_BUFFER_BIT;
 import static com.jogamp.opengl.GL.GL_TEXTURE1;
 import static com.jogamp.opengl.GL.GL_TEXTURE_2D;
 import static com.jogamp.opengl.GL2ES2.GL_FRAGMENT_SHADER;

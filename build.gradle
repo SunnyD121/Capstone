@@ -15,6 +15,7 @@ allprojects {
         compile "org.jogamp.gluegen:gluegen-rt:2.+"
         compile "org.jogamp.jogl:jogl-all:2.+"
         compile "org.joml:joml:1.+"
+        compile 'org.checkerframework:checker:2.1.12'
 
         runtime "org.jogamp.gluegen:gluegen-rt:2.3.1:natives-windows-amd64"
         runtime "org.jogamp.jogl:jogl-all:2.3.1:natives-windows-amd64"
